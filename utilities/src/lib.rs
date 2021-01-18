@@ -1,3 +1,26 @@
+// todo: add difference calculations from tests/GeodTest to rs utilities (and review vs geod_error from validate-geographiclib
+// todo: modify rs cpplog reader code to check for geographiclib and baseline version numbers in header line, and fail if they don't match expected
+// todo: add rs test cases based on tests/ClosestApproach
+// todo: add rs test cases based on tests/ConicTest
+// todo: add rs test cases based on tests/EllipticTest
+// todo: add rs test cases based on tests/GeodExact
+// todo: add rs test cases based on tests/GeodShort
+// todo: add rs test cases based on tests/GeodTest
+// todo: add rs test cases based on tests/HarmTest
+// todo: add rs test cases based on tests/intersect
+// todo: add rs test cases based on tests/LevelEllipsoid
+// todo: add rs test cases based on tests/M12zero
+// todo: add rs test cases based on tests/NaNTester
+// todo: add rs test cases based on tests/NormalTest
+// todo: add rs test cases based on tests/ProjTest
+// todo: add rs test cases based on tests/reformat
+// todo: add rs test cases based on tests/test-distribution
+// todo: add rs test cases based on tests/TMTest
+// todo: add rs test cases based on tests/example-Geodesic
+// todo: add tests from geographiclib tests folder to instrumented-crude cpp variation, rerun cpp baseline, and upload zip files
+// todo: update rs local copy of cpplog data files
+
+
 // testing tip: If you want full test output in a predictable order, including ignored tests,
 //              use "cargo test -- --include-ignored --nocapture --test-threads 1"
 //              (Note: include-ignored is still only available in nightly as of 2021/01/15, but looks like it's coming to stable soon)
