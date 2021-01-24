@@ -8,7 +8,7 @@ use std::io::{self, BufRead};
 use std::path;
 use std::u64;
 
-pub const DAT_PATH_RELATIVE: &str = "test_fixtures/test-data-unzipped";
+pub const DAT_PATH_RELATIVE: &str = "test_fixtures/test_data_unzipped";
 
 // Expected paths for zipped and unzipped versions of a file.
 pub struct DataPathPair {
