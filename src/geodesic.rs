@@ -2682,7 +2682,7 @@ mod tests {
         // of outputs.
         let azi1_reverse = geomath::ang_normalize(azi1 + 180.0);
         let azi2_reverse = geomath::ang_normalize(azi2 + 180.0);
-        // (lat2, lon2, azi2, lat1, lon1, azi1, -s12, -a12, m12, S12)
+        // (lat2, lon2, azi2, lat1, lon1, azi1, -s12, -a12, -m12, -S12)
         (lat2, lon2, azi2_reverse, lat1, lon1, azi1_reverse, s12, a12, m12, S12)
     }
 
@@ -2723,7 +2723,7 @@ mod tests {
     fn test_geodtest_geodesic_direct21() {
         // Line format: lat1 lon1 azi1 lat2 lon2 azi2 s12 a12 m12 S12
         let delta_entries = Arc::new(Mutex::new(DeltaEntry::new_vec(
-            "test_geodtest_geodesic_direct12 ", &[
+            "test_geodtest_geodesic_direct21 ", &[
                 // Note that names below refer to transformed values, after the reversal.
                 ("result.0 (lat2)", 1e-13, false, false),
                 ("result.1 (lon2)", 1e-7, false, false),
