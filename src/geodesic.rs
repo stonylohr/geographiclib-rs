@@ -263,7 +263,7 @@ impl Geodesic {
                 J12 = m0x * sig12 + (A1 * B1 - A2 * B2);
             }
         } else if outmask & (caps::REDUCEDLENGTH | caps::GEODESICSCALE) != 0 {
-            for l in 1..self.GEODESIC_ORDER {
+            for l in 1..=self.GEODESIC_ORDER {
                 C2a[l as usize] = A1 * C1a[l as usize] - A2 * C2a[l as usize];
             }
             J12 = m0x * sig12
@@ -338,20 +338,17 @@ impl Geodesic {
 
         if shortline && ssig12 < self._etol2 {
             salp2 = cbet1 * somg12;
-            calp2 = sbet12
-                - cbet1
-                    * sbet2
-                    * (geomath::sq(somg12)
-                        / if comg12 >= 0.0 {
-                            1.0 + comg12
-                        } else {
-                            1.0 - comg12
-                        });
+            calp2 = sbet12 - cbet1 * sbet2
+                * (if comg12 >= 0.0 {
+                        geomath::sq(somg12) / (1.0 + comg12)
+                    } else {
+                        1.0 - comg12
+                    });
             let res = geomath::norm(salp2, calp2);
             salp2 = res.0;
             calp2 = res.1;
             sig12 = ssig12.atan2(csig12);
-        } else if self._n.abs() >= 0.1
+        } else if self._n.abs() > 0.1
             || csig12 >= 0.0
             || ssig12 >= 6.0 * self._n.abs() * PI * geomath::sq(cbet1)
         {
@@ -565,14 +562,9 @@ impl Geodesic {
         let mut S12 = std::f64::NAN;
         let outmask = outmask & caps::OUT_MASK;
 
-        // Compute longitude difference (AngDiff does this carefully).  Result is
-        // in [-180, 180] but -180 is only for west-going geodesics.  180 is for
-        // east-going and meridional geodesics.
         let (mut lon12, mut lon12s) = geomath::ang_diff(lon1, lon2);
-        // Make longitude difference positive.
         let mut lonsign = if lon12 >= 0.0 { 1.0 } else { -1.0 };
 
-        // If very close to being on the same half-meridian, then make it so.
         lon12 = lonsign * geomath::ang_round(lon12);
         lon12s = geomath::ang_round((180.0 - lon12) - lonsign * lon12s);
         let lam12 = lon12.to_radians();
@@ -588,13 +580,9 @@ impl Geodesic {
             slam12 = res.0;
             clam12 = res.1;
         };
-
-        // If really close to the equator, treat as on equator.
         lat1 = geomath::ang_round(geomath::lat_fix(lat1));
         lat2 = geomath::ang_round(geomath::lat_fix(lat2));
 
-        // Swap points so that point with higher (abs) latitude is point 1.
-        // If one latitude is a nan, then it becomes lat1.
         let swapp = if lat1.abs() < lat2.abs() { -1.0 } else { 1.0 };
         if swapp < 0.0 {
             lonsign *= -1.0;
@@ -602,45 +590,21 @@ impl Geodesic {
             lat2 = lat1;
             lat1 = _l;
         }
-        // Make lat1 <= 0
         let latsign = if lat1 < 0.0 { 1.0 } else { -1.0 };
         lat1 *= latsign;
         lat2 *= latsign;
 
-        // Now we have
-        //
-        //     0 <= lon12 <= 180
-        //     -90 <= lat1 <= 0
-        //     lat1 <= lat2 <= -lat1
-        //
-        // longsign, swapp, latsign register the transformation to bring the
-        // coordinates to this canonical form.  In all cases, 1 means no change was
-        // made.  We make these transformations so that there are few cases to
-        // check, e.g., on verifying quadrants in atan2.  In addition, this
-        // enforces some symmetries in the results returned.
-
         let (mut sbet1, cbet1) = geomath::sincosd(lat1);
         sbet1 *= self._f1;
 
-        // Ensure cbet1 = +epsilon at poles; doing the fix on beta means that sig12
-        // will be <= 2*tiny for two points at the same pole.
         let (sbet1, mut cbet1) = geomath::norm(sbet1, cbet1);
         cbet1 = cbet1.max(self.tiny_);
 
         let (mut sbet2, cbet2) = geomath::sincosd(lat2);
         sbet2 *= self._f1;
 
-        // Ensure cbet2 = +epsilon at poles
         let (mut sbet2, mut cbet2) = geomath::norm(sbet2, cbet2);
         cbet2 = cbet2.max(self.tiny_);
-
-        // If cbet1 < -sbet1, then cbet2 - cbet1 is a sensitive measure of the
-        // |bet1| - |bet2|.  Alternatively (cbet1 >= -sbet1), abs(sbet2) + sbet1 is
-        // a better measure.  This logic is used in assigning calp2 in Lambda12.
-        // Sometimes these quantities vanish and in that case we force bet2 = +/-
-        // bet1 exactly.  An example where is is necessary is the inverse problem
-        // 48.522876735459 0 -48.52287673545898293 179.599720456223079643
-        // which failed with Visual Studio 10 (Release and Debug)
 
         if cbet1 < -sbet1 {
             if cbet2 == cbet1 {
@@ -656,7 +620,6 @@ impl Geodesic {
         let dn2 = (1.0 + self._ep2 * geomath::sq(sbet2)).sqrt();
 
         const CARR_SIZE: usize = GEODESIC_ORDER as usize + 1;
-        // index zero element of these arrays are unused
         let mut C1a: [f64; CARR_SIZE] = [0.0; CARR_SIZE];
         let mut C2a: [f64; CARR_SIZE] = [0.0; CARR_SIZE];
         let mut C3a: [f64; CARR_SIZE] = [0.0; CARR_SIZE];
@@ -675,21 +638,16 @@ impl Geodesic {
         let mut m12x = 0.0;
 
         if meridian {
-            // Endpoints are on a single full meridian, so the geodesic might lie on
-            // a meridian.
-
             calp1 = clam12;
-            salp1 = slam12; // Head to the target longitude
+            salp1 = slam12;
             calp2 = 1.0;
-            salp2 = 0.0;    // At the target we're heading north
+            salp2 = 0.0;
 
-            // tan(bet) = tan(sig) * cos(alp)
             ssig1 = sbet1;
             csig1 = calp1 * cbet1;
             ssig2 = sbet2;
             csig2 = calp2 * cbet2;
 
-            // sig12 = sig2 - sig1
             sig12 = ((csig1 * ssig2 - ssig1 * csig2).max(0.0)).atan2(csig1 * csig2 + ssig1 * ssig2);
             let res = self._Lengths(
                 self._n,
@@ -711,15 +669,7 @@ impl Geodesic {
             M12 = res.3;
             M21 = res.4;
 
-            // Add the check for sig12 since zero length geodesics might yield m12 <
-            // 0.  Test case was
-            //
-            //    echo 20.001 0 20.001 0 | GeodSolve -i
-            //
-            // In fact, we will have sig12 > pi/2 for meridional geodesic which is
-            // not a shortest path.
             if sig12 < 1.0 || m12x >= 0.0 {
-                // Need at least 2, to handle 90 0 90 180
                 if sig12 < 3.0 * self.tiny_ {
                     sig12 = 0.0;
                     m12x = 0.0;
@@ -729,19 +679,16 @@ impl Geodesic {
                 s12x *= self._b;
                 a12 = sig12.to_degrees();
             } else {
-                // m12 < 0, i.e., prolate and too close to anti-podal
                 meridian = false;
             }
         }
 
-        // somg12 > 1 marks that it needs to be calculated
         let mut somg12 = 2.0;
         let mut comg12 = 0.0;
         let mut omg12 = 0.0;
         let dnm: f64;
         let mut eps = 0.0;
         if !meridian && sbet1 == 0.0 && (self.f <= 0.0 || lon12s >= self.f * 180.0) {
-            // Geodesic runs along equator
             calp1 = 0.0;
             calp2 = 0.0;
             salp1 = 1.0;
@@ -757,10 +704,6 @@ impl Geodesic {
             }
             a12 = lon12 / self._f1;
         } else if !meridian {
-            // Now point1 and point2 belong within a hemisphere bounded by a
-            // meridian and geodesic is neither meridional or equatorial.
-
-            // Figure a starting point for Newton's method
             let res = self._InverseStart(
                 sbet1, cbet1, dn1, sbet2, cbet2, dn2, lam12, slam12, clam12, &mut C1a, &mut C2a,
             );
@@ -772,7 +715,6 @@ impl Geodesic {
             dnm = res.5;
 
             if sig12 >= 0.0 {
-                // Short lines (InverseStart sets salp2, calp2, dnm)
                 s12x = sig12 * self._b * dnm;
                 m12x = geomath::sq(dnm) * self._b * (sig12 / dnm).sin();
                 if outmask & caps::GEODESICSCALE != 0 {
@@ -782,19 +724,6 @@ impl Geodesic {
                 a12 = sig12.to_degrees();
                 omg12 = lam12 / (self._f1 * dnm);
             } else {
-                // Newton's method.  This is a straightforward solution of f(alp1) =
-                // lambda12(alp1) - lam12 = 0 with one wrinkle.  f(alp) has exactly one
-                // root in the interval (0, pi) and its derivative is positive at the
-                // root.  Thus f(alp) is positive for alp > alp1 and negative for alp <
-                // alp1.  During the course of the iteration, a range (alp1a, alp1b) is
-                // maintained which brackets the root and with each evaluation of
-                // f(alp) the range is shrunk, if possible.  Newton's method is
-                // restarted whenever the derivative of f is negative (because the new
-                // value of alp1 is then further from the solution) or if the new
-                // estimate of alp1 lies outside (0,pi); in this case, the new starting
-                // guess is taken to be (alp1a + alp1b) / 2.
-
-                // Bracketing range
                 let mut tripn = false;
                 let mut tripb = false;
                 let mut salp1a = self.tiny_;
@@ -803,8 +732,6 @@ impl Geodesic {
                 let mut calp1b = -1.0;
                 let mut domg12 = 0.0;
                 for numit in 0..self.maxit2_ {
-                    // the WGS84 test set: mean = 1.47, sd = 1.25, max = 16
-                    // WGS84 and random input: mean = 2.85, sd = 0.60
                     let res = self._Lambda12(
                         sbet1,
                         cbet1,
@@ -833,11 +760,9 @@ impl Geodesic {
                     domg12 = res.9;
                     let dv = res.10;
 
-                    // Reversed test to allow escape with NaNs
                     if tripb || !(v.abs() >= if tripn { 8.0 } else { 1.0 } * self.tol0_) {
                         break;
                     };
-                    // Update bracketing values
                     if v > 0.0 && (numit > self.maxit1_ || calp1 / salp1 > calp1b / salp1b) {
                         salp1b = salp1;
                         calp1b = calp1;
@@ -856,22 +781,11 @@ impl Geodesic {
                             let res = geomath::norm(salp1, calp1);
                             salp1 = res.0;
                             calp1 = res.1;
-                            // In some regimes we don't get quadratic convergence because
-                            // slope -> 0.  So use convergence conditions based on epsilon
-                            // instead of sqrt(epsilon).
                             tripn = v.abs() <= 16.0 * self.tol0_;
                             continue;
                         }
                     }
 
-                    // Either dv was not positive or updated value was outside legal
-                    // range.  Use the midpoint of the bracket as the next estimate.
-                    // This mechanism is not needed for the WGS84 ellipsoid, but it does
-                    // catch problems with more eccentric ellipsoids.  Its efficacy is
-                    // such for the WGS84 test set with the starting guess set to alp1 =
-                    // 90deg:
-                    // the WGS84 test set: mean = 5.21, sd = 3.93, max = 24
-                    // WGS84 and random input: mean = 4.74, sd = 0.99
                     salp1 = (salp1a + salp1b) / 2.0;
                     calp1 = (calp1a + calp1b) / 2.0;
                     let res = geomath::norm(salp1, calp1);
@@ -881,8 +795,6 @@ impl Geodesic {
                     tripb = (salp1a - salp1).abs() + (calp1a - calp1) < self.tolb_
                         || (salp1 - salp1b).abs() + (calp1 - calp1b) < self.tolb_;
                 }
-                // Ensure that the reduced length and geodesic scale are computed in
-                // a "canonical" way, with the I2 integral.
                 let lengthmask = outmask
                     | if outmask & (caps::REDUCEDLENGTH | caps::GEODESICSCALE) != 0 {
                         caps::DISTANCE
@@ -902,7 +814,6 @@ impl Geodesic {
                 s12x *= self._b;
                 a12 = sig12.to_degrees();
                 if outmask & caps::AREA != 0 {
-                    // omg12 = lam12 - domg12
                     let sdomg12 = domg12.sin();
                     let cdomg12 = domg12.cos();
                     somg12 = slam12 * cdomg12 - clam12 * sdomg12;
@@ -911,24 +822,21 @@ impl Geodesic {
             }
         }
         if outmask & caps::DISTANCE != 0 {
-            s12 = 0.0 + s12x;           // Convert -0 to 0
+            s12 = 0.0 + s12x;
         }
         if outmask & caps::REDUCEDLENGTH != 0 {
-            m12 = 0.0 + m12x;           // Convert -0 to 0
+            m12 = 0.0 + m12x;
         }
         if outmask & caps::AREA != 0 {
-            // From Lambda12: sin(alp1) * cos(bet1) = sin(alp0)
             let salp0 = salp1 * cbet1;
             let calp0 = calp1.hypot(salp1 * sbet1); // calp0 > 0
             if calp0 != 0.0 && salp0 != 0.0 {
-                // From Lambda12: tan(bet) = tan(sig) * cos(alp)
                 ssig1 = sbet1;
                 csig1 = calp1 * cbet1;
                 ssig2 = sbet2;
                 csig2 = calp2 * cbet2;
                 let k2 = geomath::sq(calp0) * self._ep2;
                 eps = k2 / (2.0 * (1.0 + (1.0 + k2).sqrt()) + k2);
-                // Multiplier = a^2 * e^2 * cos(alpha0) * sin(alpha0).
                 let A4 = geomath::sq(self.a) * calp0 * salp0 * self._e2;
                 let res = geomath::norm(ssig1, csig1);
                 ssig1 = res.0;
@@ -942,7 +850,6 @@ impl Geodesic {
                 let B42 = geomath::sin_cos_series(false, ssig2, csig2, &C4a);
                 S12 = A4 * (B42 - B41);
             } else {
-                // Avoid problems with indeterminate sig1, sig2 on equator
                 S12 = 0.0;
             }
 
@@ -952,12 +859,7 @@ impl Geodesic {
             }
 
             let alp12: f64;
-            if !meridian &&
-               comg12 > -0.7071 &&    // Long difference not too big
-               sbet2 - sbet1 < 1.75 { // Lat difference not too big
-                // Use tan(Gamma/2) = tan(omg12/2)
-                // * (tan(bet1/2)+tan(bet2/2))/(1+tan(bet1/2)*tan(bet2/2))
-                // with tan(x/2) = sin(x)/(1+cos(x))
+            if !meridian && comg12 > -0.7071 && sbet2 - sbet1 < 1.75 {
                 let domg12 = 1.0 + comg12;
                 let dbet1 = 1.0 + cbet1;
                 let dbet2 = 1.0 + cbet2;
@@ -965,14 +867,9 @@ impl Geodesic {
                     * (somg12 * (sbet1 * dbet2 + sbet2 * dbet1))
                         .atan2(domg12 * (sbet1 * sbet2 + dbet1 * dbet2));
             } else {
-                // alp12 = alp2 - alp1, used in atan2 so no need to normalize
                 let mut salp12 = salp2 * calp1 - calp2 * salp1;
                 let mut calp12 = calp2 * calp1 + salp2 * salp1;
 
-                // The right thing appears to happen if alp1 = +/-180 and alp2 = 0, viz
-                // salp12 = -0 and alp12 = -180.  However this depends on the sign
-                // being attached to 0 correctly.  The following ensures the correct
-                // behavior.
                 if salp12 == 0.0 && calp12 < 0.0 {
                     salp12 = self.tiny_ * calp1;
                     calp12 = -1.0;
@@ -981,11 +878,9 @@ impl Geodesic {
             }
             S12 += self._c2 * alp12;
             S12 *= swapp * lonsign * latsign;
-            // Convert -0 to 0
             S12 += 0.0;
         }
 
-        // Convert calp, salp to azimuth accounting for lonsign, swapp, latsign.
         if swapp < 0.0 {
             let _s = salp2;
             salp2 = salp1;
@@ -1003,7 +898,6 @@ impl Geodesic {
         calp1 *= swapp * latsign;
         salp2 *= swapp * lonsign;
         calp2 *= swapp * latsign;
-        // Returned a12 value in [0, 180]
         (a12, s12, salp1, calp1, salp2, calp2, m12, M12, M21, S12)
     }
 
