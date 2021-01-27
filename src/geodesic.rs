@@ -2288,7 +2288,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore] // Fails existing behavior.
     fn test_std_geodesic_geodsolve26() {
         // Check 0/0 problem with area calculation on sphere 2015-09-08
         let geod = Geodesic::new(6.4e6, 0.0);
