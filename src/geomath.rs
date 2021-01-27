@@ -609,8 +609,25 @@ mod tests {
     }
 
     // Placeholder: Math_cosd
-    // Placeholder: Math_eatanhe
 
+    #[test]
+    #[ignore] // Relies on non-Karney outside files. Slow.
+    fn test_vs_cpp_geomath_eatanhe() {
+        // Line format: x es result
+        let delta_entries = Arc::new(Mutex::new(DeltaEntry::new_vec(
+            "test_vs_cpp_geomath_eatanhe ", &[
+                ("result", 2e-18, false, false),
+            ])));
+        test_basic("Math_eatanhe", 3, |line_num, items| {
+            let result = eatanhe(items[0], items[1]);
+            let mut entries = delta_entries.lock().unwrap();
+            entries[0].add(items[2], result, line_num);
+        });
+        println!();
+        delta_entries.lock().unwrap().iter().for_each(|entry| println!("{}", entry));
+        delta_entries.lock().unwrap().iter().for_each(|entry| entry.assert());
+    }
+    
     #[test]
     #[ignore] // Relies on non-Karney outside files. Slow.
     fn test_vs_cpp_geomath_lat_fix() {

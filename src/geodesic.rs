@@ -2297,7 +2297,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore] // Fails existing behavior.
     fn test_std_geodesic_geodsolve28() {
         // Check for bad placement of assignment of r.a12 with |f| > 0.01 (bug in
         // Java implementation fixed on 2015-05-19).
