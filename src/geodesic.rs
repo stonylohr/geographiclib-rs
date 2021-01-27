@@ -2143,7 +2143,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore] // Fails existing behavior.
     fn test_std_geodesic_geodsolve2() {
         // Check fix for antipodal prolate bug found 2010-09-04
         let geod = Geodesic::new(6.4e6, -1f64/150.0);
@@ -2153,11 +2152,11 @@ mod tests {
                 ("azi2", 0.5e-5, false, false),
                 ("s12" , 0.5,    false, false),
             ]);
-        let (azi1, azi2, s12) = geod.inverse(0.07476, 0.0, -0.07476, 180.0);
+        let (s12, azi1, azi2, _a12) = geod.inverse(0.07476, 0.0, -0.07476, 180.0);
         delta_entries[0].add(90.00078  , azi1, 1);
         delta_entries[1].add(90.00078  , azi2, 1);
         delta_entries[2].add(20106193.0, s12 , 1);
-        let (azi1, azi2, s12) = geod.inverse(0.1, 0.0, -0.1, 180.0);
+        let (s12, azi1, azi2, _a12) = geod.inverse(0.1, 0.0, -0.1, 180.0);
         delta_entries[0].add(90.00105  , azi1, 2);
         delta_entries[1].add(90.00105  , azi2, 2);
         delta_entries[2].add(20106193.0, s12 , 2);
@@ -2508,7 +2507,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore] // Fails existing behavior.
     fn test_std_geodesic_geodsolve76() {
         // The distance from Wellington and Salamanca (a classic failure of
         // Vincenty)
@@ -2531,7 +2529,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore] // Fails existing behavior.
     fn test_std_geodesic_geodsolve78() {
         // An example where the NGS calculator fails to converge
         let geod = Geodesic::wgs84();
@@ -2542,7 +2539,7 @@ mod tests {
                 ("s12" , 0.5e-6 , false, false),
             ]);
 
-        let (azi1, azi2, s12) = 
+        let (s12, azi1, azi2, _a12) = 
             geod.inverse(27.2, 0.0, -27.1, 179.5);
         delta_entries[0].add( 45.82468716758, azi1, 1);
         delta_entries[1].add(134.22776532670, azi2, 1);
