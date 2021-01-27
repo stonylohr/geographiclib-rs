@@ -2519,12 +2519,12 @@ mod tests {
                 ("azi2", 0.5e-11, false, false),
                 ("s12" , 0.5e-6 , false, false),
             ]);
-        let (azi1, azi2, s12) = 
+        let (s12, azi1, azi2, _a12) = 
             geod.inverse(-(41.0+19.0/60.0), 174.0+49.0/60.0, 40.0+58.0/60.0, -(5.0+30.0/60.0));
         delta_entries[0].add(160.39137649664, azi1, 1);
         delta_entries[1].add( 19.50042925176, azi2, 1);
         delta_entries[2].add(19960543.857179, s12, 1);
-    
+
         println!();
         delta_entries.iter().for_each(|entry| println!("{}", entry));
         delta_entries.iter().for_each(|entry| entry.assert());
