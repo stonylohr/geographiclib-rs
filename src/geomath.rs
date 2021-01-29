@@ -33,9 +33,10 @@ pub fn cbrt(x: f64) -> f64 {
 }
 
 // Normalize a two-vector
-pub fn norm(x: f64, y: f64) -> (f64, f64) {
-    let r = x.hypot(y);
-    (x / r, y / r)
+pub fn norm(x: &mut f64, y: &mut f64) {
+    let r = x.hypot(*y);
+    *x /= r;
+    *y /= r;
 }
 
 // Error free transformation of a sum
@@ -643,9 +644,11 @@ mod tests {
     fn test_vs_cpp_geomath_norm() {
         // Line format: x-in y-in x-out y-out
         test_basic("Math_norm", 4, |line_num, items| {
-            let result = norm(items[0], items[1]);
-            assert_delta!(items[2], result.0, 0.0, false, "x-out (result.0)", line_num);
-            assert_delta!(items[3], result.1, 0.0, false, "y-out (result.1)", line_num);
+            let mut x = items[0];
+            let mut y = items[1];
+            norm(&mut x, &mut y);
+            assert_delta!(items[2], x, 0.0, false, "x-out (result.0)", line_num);
+            assert_delta!(items[3], y, 0.0, false, "y-out (result.1)", line_num);
         });
     }
 

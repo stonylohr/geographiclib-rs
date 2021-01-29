@@ -104,7 +104,7 @@ fn main() {}
 //             let data = data_arc.lock().unwrap();
 //             for i in 0..data.len() {
 //                 let line = &data[i];
-//                 let _result = geomath::norm(line[0], line[1]);
+//                 geomath::norm(&mut line[0], &mut line[1]);
 //             }
 //         })
 //     });
