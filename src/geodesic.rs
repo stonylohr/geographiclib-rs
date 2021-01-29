@@ -912,11 +912,6 @@ impl Geodesic {
         if !arcmode {
             outmask = outmask | caps::DISTANCE_IN;
         };
-        let lon1 = if outmask & caps::LONG_UNROLL != 0 {
-            lon1
-        } else {
-            geomath::ang_normalize(lon1)
-        };
 
         let line =
             geodesicline::GeodesicLine::new(self, lat1, lon1, azi1, Some(outmask), None, None);
@@ -1309,6 +1304,7 @@ mod tests {
     use super::*;
     use assert_approx_eq::assert_approx_eq;
     use std::sync::{Arc, Mutex};
+    use crate::geodesicline::GeodesicLine;
     use utilities::{log_assert_delta, nC_, util};
     use utilities::util::test_basic;
     use utilities::delta_entry::DeltaEntry;
@@ -2265,13 +2261,12 @@ mod tests {
         log_assert_delta("test_std_geodesic_geodsolve17", "lon2 a", lon2, -254.0, 1.0, false);
         log_assert_delta("test_std_geodesic_geodsolve17", "azi2 a", azi2, -170.0, 1.0, false);
 
-        // todo: review whether and how this is supported in geographiclib-rs
-        // let line = geod.line(40.0, -75.0, -10.0);
-        // let (_a12, lat2, lon2, azi2, _s12, _m12, _M12, _M21, _S12) =
-        //     line.position(2e7, caps::STANDARD | caps::LONG_UNROLL);
-        // log_assert_delta("test_std_geodesic_geodsolve17", "lat2 b", lat2, -39.0, 1.0, false);
-        // log_assert_delta("test_std_geodesic_geodsolve17", "lon2 b", lon2, -254.0, 1.0, false);
-        // log_assert_delta("test_std_geodesic_geodsolve17", "azi2 b", azi2, -170.0, 1.0, false);
+        let line = GeodesicLine::new(&geod, 40.0, -75.0, -10.0, None, None, None);
+        let (_a12, lat2, lon2, azi2, _s12, _m12, _M12, _M21, _S12) =
+            line._gen_position(false, 2e7, caps::STANDARD | caps::LONG_UNROLL);
+        log_assert_delta("test_std_geodesic_geodsolve17", "lat2 b", lat2, -39.0, 1.0, false);
+        log_assert_delta("test_std_geodesic_geodsolve17", "lon2 b", lon2, -254.0, 1.0, false);
+        log_assert_delta("test_std_geodesic_geodsolve17", "azi2 b", azi2, -170.0, 1.0, false);
 
         let (lat2, lon2, azi2) =
             geod.direct(40.0, -75.0, -10.0, 2e7);
@@ -2279,12 +2274,11 @@ mod tests {
         log_assert_delta("test_std_geodesic_geodsolve17", "lon2 c", lon2, 105.0, 1.0, false);
         log_assert_delta("test_std_geodesic_geodsolve17", "azi2 c", azi2, -170.0, 1.0, false);
 
-        // todo: review whether and how this is supported in geographiclib-rs
-        // let (_a12, lat2, lon2, azi2, _s12, _m12, _M12, _M21, _S12) =
-        //     line.position(2e7);
-        // log_assert_delta("test_std_geodesic_geodsolve17", "lat2 d", lat2, -39.0, 1.0, false);
-        // log_assert_delta("test_std_geodesic_geodsolve17", "lon2 d", lon2, 105.0, 1.0, false);
-        // log_assert_delta("test_std_geodesic_geodsolve17", "azi2 d", azi2, -170.0, 1.0, false);
+        let (_a12, lat2, lon2, azi2, _s12, _m12, _M12, _M21, _S12) =
+            line._gen_position(false, 2e7, caps::STANDARD);
+        log_assert_delta("test_std_geodesic_geodsolve17", "lat2 d", lat2, -39.0, 1.0, false);
+        log_assert_delta("test_std_geodesic_geodsolve17", "lon2 d", lon2, 105.0, 1.0, false);
+        log_assert_delta("test_std_geodesic_geodsolve17", "azi2 d", azi2, -170.0, 1.0, false);
     }
 
     #[test]
@@ -2583,10 +2577,10 @@ mod tests {
         log_assert_delta("test_std_geodesic_geodsolve80", "S12 d",  S12, 127516405431022.0, 0.5, false);
 
         // An incapable line which can't take distance as input
-        // todo: review whether and how this is supported in geographiclib-rs
-        // GeodesicLine line = geod.line(1, 2, 90, GeodesicMask.LATITUDE);
-        // GeodesicData dir = line.Position(1000, GeodesicMask.NONE);
-        // log_assert_delta("test_std_geodesic_geodsolve80", "a12", a12, , false);
+        let line = GeodesicLine::new(&geod, 1.0, 2.0, 90.0, Some(caps::LATITUDE), None, None);
+        let (a12, _lat2, _lon2, _azi2, _s12, _m12, _M12, _M21, _S12) =
+            line._gen_position(false, 1000.0, caps::CAP_NONE);
+        assert!(a12.is_nan());
     }
 
     #[test]

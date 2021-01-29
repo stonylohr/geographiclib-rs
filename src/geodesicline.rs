@@ -19,8 +19,8 @@ pub struct GeodesicLine {
     _C1a: [f64; GEODESIC_ORDER as usize + 1],
     _C1pa: [f64; GEODESIC_ORDER as usize + 1],
     _C2a: [f64; GEODESIC_ORDER as usize + 1],
-    _C3a: [f64; GEODESIC_ORDER as usize + 1],
-    _C4a: [f64; GEODESIC_ORDER as usize + 1],
+    _C3a: [f64; GEODESIC_ORDER as usize],
+    _C4a: [f64; GEODESIC_ORDER as usize],
     _b: f64,
     _c2: f64,
     _calp0: f64,
@@ -78,15 +78,14 @@ impl GeodesicLine {
         let _c2 = geod._c2;
         let _f1 = geod._f1;
         let caps = caps | caps::LATITUDE | caps::AZIMUTH | caps::LONG_UNROLL;
-        let lat1 = geomath::lat_fix(lat1);
-        let lon1 = lon1;
         let (azi1, salp1, calp1) = if salp1.is_nan() || calp1.is_nan() {
-            let (salp1, calp1) = geomath::sincosd(geomath::ang_round(azi1));
             let azi1 = geomath::ang_normalize(azi1);
+            let (salp1, calp1) = geomath::sincosd(geomath::ang_round(azi1));
             (azi1, salp1, calp1)
         } else {
             (azi1, salp1, calp1)
         };
+        let lat1 = geomath::lat_fix(lat1);
 
         let (mut sbet1, cbet1) = geomath::sincosd(geomath::ang_round(lat1));
         sbet1 *= _f1;
@@ -136,7 +135,7 @@ impl GeodesicLine {
             _B21 = geomath::sin_cos_series(true, _ssig1, _csig1, &_C2a);
         }
 
-        let mut _C3a: [f64; GEODESIC_ORDER as usize + 1] = [0.0; GEODESIC_ORDER as usize + 1];
+        let mut _C3a: [f64; GEODESIC_ORDER as usize] = [0.0; GEODESIC_ORDER as usize];
         let mut _A3c = 0.0;
         let mut _B31 = 0.0;
         if caps & caps::CAP_C3 != 0 {
@@ -145,7 +144,7 @@ impl GeodesicLine {
             _B31 = geomath::sin_cos_series(true, _ssig1, _csig1, &_C3a);
         }
 
-        let mut _C4a: [f64; GEODESIC_ORDER as usize + 1] = [0.0; GEODESIC_ORDER as usize + 1];
+        let mut _C4a: [f64; GEODESIC_ORDER as usize] = [0.0; GEODESIC_ORDER as usize];
         let mut _A4 = 0.0;
         let mut _B41 = 0.0;
         if caps & caps::CAP_C4 != 0 {
@@ -230,16 +229,10 @@ impl GeodesicLine {
             sig12 = s12_a12.to_radians();
             let res = geomath::sincosd(s12_a12);
             ssig12 = res.0;
-            csig12 = res.0;
+            csig12 = res.1;
         } else {
             // tau12 = s12_a12 / (self._b * (1 + self._A1m1))
-            // tau12 = tau12 if Math.isfinite(tau12) else Math.nan
             let tau12 = s12_a12 / (self._b * (1.0 + self._A1m1));
-            let tau12 = if tau12.is_finite() {
-                tau12
-            } else {
-                std::f64::NAN
-            };
 
             let s = tau12.sin();
             let c = tau12.cos();
@@ -258,7 +251,7 @@ impl GeodesicLine {
                 csig2 = self._csig1 * csig12 - self._ssig1 * ssig12;
                 B12 = geomath::sin_cos_series(true, ssig2, csig2, &self._C1a);
                 let serr = (1.0 + self._A1m1) * (sig12 + (B12 - self._B11)) - s12_a12 / self._b;
-                sig12 = sig12 - serr / (1.0 + self._k2 * ssig2.sqrt()).sqrt();
+                sig12 = sig12 - serr / (1.0 + self._k2 * geomath::sq(ssig2)).sqrt();
                 ssig12 = sig12.sin();
                 csig12 = sig12.cos();
             }
@@ -549,10 +542,10 @@ mod tests {
         // Format: this-in[_a _f _lat1 _lon1 _azi1 _a13 _s13 _caps _salp0 _calp0 tiny_ _b _c2 _f1 _k2 _salp1 _calp1 _ssig1 _csig1 _dn1 _stau1 _ctau1 _somg1 _comg1 _A1m1 _A2m1 _A3c _B11 _B21 _B31 _A4 _B41 _C1a(nC1_+1) _C1pa(nC1p_+1) _C2a(nC2_+1) _C3a(nC3_) _C4a(nC4_)] arcmode s12_a12 outmask result=a12 lat2-out lon2-out azi2-out s12-out m12-out M12-out M21-out S12-out
         let delta_entries = Arc::new(Mutex::new(DeltaEntry::new_vec(
             "test_vs_cpp_geodesicline_gen_position ", &[
-                ("result (a12 or result.0)", 0.0, true, false),
-                ("lat2-out (result.1)", 0.0, false, false),
-                ("lon2-out (result.2)", 0.0, false , false),
-                ("azi2-out (result.3)", 0.0, false, false),
+                ("result (a12 or result.0)", 2e-16, true, false),
+                ("lat2-out (result.1)", 2e-14, false, false),
+                ("lon2-out (result.2)", 4e-9, false , false),
+                ("azi2-out (result.3)", 3e-14, false, false),
                 ("s12-out (result.4)", 0.0, true, false),
                 ("m12-out (result.5)", 0.0, true, false),
                 ("M12-out (result.6)", 0.0, true, false),
@@ -613,17 +606,17 @@ mod tests {
                 ("a13", 0.0, false, false),
                 ("s13", 0.0, false, false),
                 ("caps", 0.0, false, false),
-                ("salp0", 0.0, false, false),
-                ("calp0", 0.0, false, false),
+                ("salp0", 6e-17, false, false),
+                ("calp0", 2e-16, false, false),
                 ("tiny", 0.0, false, false),
                 ("b", 0.0, false, false),
                 ("c2", 0.0, false, false),
                 ("f1", 0.0, false, false),
-                ("k2", 0.0, false, false),
+                ("k2", 2e-18, false, false),
                 ("salp1", 0.0, false, false),
                 ("calp1", 0.0, false, false),
-                ("ssig1", 0.0, false, false),
-                ("csig1", 0.0, false, false),
+                ("ssig1", 2e-16, false, false),
+                ("csig1", 2e-16, false, false),
                 ("dn1", 0.0, false, false),
                 ("stau1", 0.0, false, false),
                 ("ctau1", 0.0, false, false),
@@ -633,15 +626,15 @@ mod tests {
                 ("A2m1", 0.0, false, false),
                 ("A3c", 0.0, false, false),
                 ("B11", 0.0, false, false),
-                ("B21", 0.0, false, false),
+                ("B21", 5e-320, false, false),
                 ("B31", 0.0, false, false),
                 ("A4", 0.0, false, false),
                 ("B41", 0.0, false, false),
                 ("C1a item", 0.0, false, false),
-                ("C1pa item", 0.0, false, false),
+                ("C1pa item", 3e-320, false, false),
                 ("C2a item", 0.0, false, false),
                 ("C3a item", 0.0, false, false),
-                ("C4a item", 0.0, false, false),
+                ("C4a item", 7e-310, false, false),
             ])));
         // 38 +... _C1a(nC1_+1) _C1pa(nC1p_+1) _C2a(nC2_+1) _C3a(nC3_) _C4a(nC4_)
         test_basic("GeodesicLine_GeodesicLine_5arg", 38 + 3 + 5 * (GEODESIC_ORDER as isize), |line_num, items| {
