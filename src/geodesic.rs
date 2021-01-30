@@ -2793,26 +2793,158 @@ mod tests {
     // These tests are flagged as "ignore" because they're slow and not self-contained
     // (since they need to read data files), so they only run if specifically requested.
 
-    // placeholder: Geodesic_A1m1f
-    // placeholder: Geodesic_A2m1f
+    // Set Geodesic properties based on an array of items.
+    // Needed for some functions that are called partway through construction.
+    fn set_geod(g: &mut Geodesic, items: &[f64]) {
+        // items: _a _f maxit2_ tiny_ tol0_ tol1_ tol2_ tolb_ xthresh_ _f1 _e2 _ep2 _n _b _c2 _etol2 _A3x(nA3x_) _C3x(nC3x_) _C4x(nC4x_)
+        assert_eq!(g.a, items[0]);
+        assert_eq!(g.f, items[1]);
+        g.maxit2_ = items[2] as u64;
+        g.tiny_ = items[3];
+        g.tol0_ = items[4];
+        g.tol1_ = items[5];
+        g.tol2_ = items[6];
+        g.tolb_ = items[7];
+        g.xthresh_ = items[8];
+        g._f1 = items[9];
+        g._e2 = items[10];
+        g._ep2 = items[11];
+        g._n = items[12];
+        g._b = items[13];
+        g._c2 = items[14];
+        g._etol2 = items[15];
+
+        // _A3x(nA3x_) _C3x(nC3x_) _C4x(nC4x_)
+
+        let mut i = 15;
+        assert_eq!(GEODESIC_ORDER as usize, g._A3x.len(), "self._A3x size mismatch");
+        for item in &mut g._A3x {
+            i += 1;
+            *item = items[i];
+        }
+
+        assert_eq!(nC3x_ as usize, g._C3x.len(), "self._C3x size mismatch");
+        for item in &mut g._C3x {
+            i += 1;
+            *item = items[i];
+        }
+
+        assert_eq!(nC4x_ as usize, g._C4x.len(), "self._C4x size mismatch");
+        for item in &mut g._C4x {
+            i += 1;
+            *item = items[i];
+        }
+    }
+
+    // Note: For Geodesic_A1m1f, see geomath_tests.rs
+    // Note: For Geodesic_A2m1f, see geomath_tests.rs
+
     // placeholder: Geodesic_A3coeff
-    // placeholder: Geodesic_A3f
+
+    #[test]
+    #[ignore] // Relies on non-Karney outside files. Slow.
+    fn test_vs_cpp_geodesic_a3f() {
+        // let consts = util::read_consts_basic("Geodesic_consts", 14);
+        // // consts: nA1_ nC1_ nC1p_ nA2_ nC2_ nA3_ nA3x_ nC3_ nC3x_ nC4_ nC4x_ nC_ maxit1_ GEOGRAPHICLIB_GEODESIC_ORDER
+        // #[allow(non_snake_case)]
+        // let nA3x_ = consts[6] as usize;
+        // // 18 + nA3x_=6 + nC3x_=15 + nC4x_=21
+        let arg_count = 4; // 18 + nA3x_ + nC3x_ as usize + nC4x_ as usize;
+
+        // Line format: this-in[_a _f] eps result
+        let delta_entries = Arc::new(Mutex::new(DeltaEntry::new_vec(
+            "test_vs_cpp_geodesic_a3f ", &[
+                ("result", 0.0, false, false),
+            ])));
+        test_basic("Geodesic_A3f", -1, |line_num, items| {
+            assert!(items.len() == arg_count, "Expected {} items per line. Line {} had {}.", arg_count, line_num, items.len());
+            let g = Geodesic::new(items[0], items[1]);
+            let result = g._A3f(items[arg_count - 2]);
+            let mut entries = delta_entries.lock().unwrap();
+            entries[0].add(items[arg_count - 1], result, line_num);
+        });
+        println!();
+        delta_entries.lock().unwrap().iter().for_each(|entry| println!("{}", entry));
+        delta_entries.lock().unwrap().iter().for_each(|entry| entry.assert());
+    }
 
     // Note: For Geodesic_Astroid, see geomath_tests.rs
+    // Note: For Geodesic_C1f, see geomath_tests.rs
+    // Note: For Geodesic_C1pf, see geomath_tests.rs
+    // Note: For Geodesic_C2f, see geomath_tests.rs
 
-    // placeholder: Geodesic_C1f
-    // placeholder: Geodesic_C1pf
-    // placeholder: Geodesic_C2f
     // placeholder: Geodesic_C3coeff
-    // placeholder: Geodesic_C3f
+
+    #[test]
+    #[ignore] // Relies on non-Karney outside files. Slow.
+    fn test_vs_cpp_geodesic_c3f() {
+        let consts = util::read_consts_basic("Geodesic_consts", 14);
+        // consts: nA1_ nC1_ nC1p_ nA2_ nC2_ nA3_ nA3x_ nC3_ nC3x_ nC4_ nC4x_ nC_ maxit1_ GEOGRAPHICLIB_GEODESIC_ORDER
+        #[allow(non_snake_case)]
+        let nA3x_ = consts[6] as usize;
+        // 18 + nA3x_=6 + nC3x_=15 + nC4x_=21
+        let arg_count = 17 + GEODESIC_ORDER as usize + nA3x_ + nC3x_ as usize + nC4x_ as usize;
+
+        // Line format: this-in[_a _f maxit2_ tiny_ tol0_ tol1_ tol2_ tolb_ xthresh_ _f1 _e2 _ep2 _n _b _c2 _etol2 _A3x(nA3x_) _C3x(nC3x_) _C4x(nC4x_)] eps c-out(nC3_)
+        let delta_entries = Arc::new(Mutex::new(DeltaEntry::new_vec(
+            "test_vs_cpp_geodesic_c3f ", &[
+                ("result", 0.0, false, false),
+            ])));
+        test_basic("Geodesic_C3f", -1, |line_num, items| {
+            assert!(items.len() == arg_count, "Expected {} items per line. Line {} had {}.", arg_count, line_num, items.len());
+            let mut g = Geodesic::new(items[0], items[1]);
+            set_geod(&mut g, items);
+            let mut c = [0.0; crate::geodesic::GEODESIC_ORDER as usize];
+            g._C3f(items[arg_count - 2], &mut c);
+            let mut entries = delta_entries.lock().unwrap();
+            for i in 0..c.len() {
+                entries[0].add(items[arg_count - GEODESIC_ORDER as usize + i], c[i], line_num);
+            }
+        });
+        println!();
+        delta_entries.lock().unwrap().iter().for_each(|entry| println!("{}", entry));
+        delta_entries.lock().unwrap().iter().for_each(|entry| entry.assert());
+    }
+
     // placeholder: Geodesic_C4coeff
-    // placeholder: Geodesic_C4f
+
+    #[test]
+    #[ignore] // Relies on non-Karney outside files. Slow.
+    fn test_vs_cpp_geodesic_c4f() {
+        let consts = util::read_consts_basic("Geodesic_consts", 14);
+        // consts: nA1_ nC1_ nC1p_ nA2_ nC2_ nA3_ nA3x_ nC3_ nC3x_ nC4_ nC4x_ nC_ maxit1_ GEOGRAPHICLIB_GEODESIC_ORDER
+        #[allow(non_snake_case)]
+        let nA3x_ = consts[6] as usize;
+        // 18 + nA3x_=6 + nC3x_=15 + nC4x_=21
+        let arg_count = 17 + GEODESIC_ORDER as usize + nA3x_ + nC3x_ as usize + nC4x_ as usize;
+
+        // Line format: this-in[_a _f maxit2_ tiny_ tol0_ tol1_ tol2_ tolb_ xthresh_ _f1 _e2 _ep2 _n _b _c2 _etol2 _A3x(nA3x_) _C3x(nC3x_) _C4x(nC4x_)] eps c-out(nC4_)
+        let delta_entries = Arc::new(Mutex::new(DeltaEntry::new_vec(
+            "test_vs_cpp_geodesic_c4f ", &[
+                ("result", 0.0, false, false),
+            ])));
+        test_basic("Geodesic_C4f", -1, |line_num, items| {
+            assert!(items.len() == arg_count, "Expected {} items per line. Line {} had {}.", arg_count, line_num, items.len());
+            let mut g = Geodesic::new(items[0], items[1]);
+            set_geod(&mut g, items);
+            let mut c = [0.0; crate::geodesic::GEODESIC_ORDER as usize];
+            g._C4f(items[arg_count - 2], &mut c);
+            let mut entries = delta_entries.lock().unwrap();
+            for i in 0..c.len() {
+                entries[0].add(items[arg_count - GEODESIC_ORDER as usize + i], c[i], line_num);
+            }
+        });
+        println!();
+        delta_entries.lock().unwrap().iter().for_each(|entry| println!("{}", entry));
+        delta_entries.lock().unwrap().iter().for_each(|entry| entry.assert());
+    }
 
     #[test]
     #[ignore] // Relies on non-Karney outside files
     fn test_vs_cpp_geodesic_consts() {
         // Format: nA1_ nC1_ nC1p_ nA2_ nC2_ nA3_ nA3x_ nC3_ nC3x_ nC4_ nC4x_ nC_ maxit1_ GEOGRAPHICLIB_GEODESIC_ORDER
         let items = util::read_consts_basic("Geodesic_consts", 14);
+        log_assert_delta("test_vs_cpp_geodesic_consts", "nA3x_", items[6], GEODESIC_ORDER as f64, 0.0, false);
         log_assert_delta("test_vs_cpp_geodesic_consts", "nC3x_", items[8], nC3x_ as f64, 0.0, false);
         log_assert_delta("test_vs_cpp_geodesic_consts", "nC4x_", items[10], nC4x_ as f64, 0.0, false);
 

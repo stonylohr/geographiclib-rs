@@ -718,8 +718,10 @@ mod tests {
     // Placeholder: Math_tauf
     // Placeholder: Math_taupf
 
+    // All remaining tests are for operations that are defined on Geodesic rather than Math in the C++ version.
+
     #[test]
-    #[ignore] // Fails current behavior. Relies on non-Karney outside files. Slow.
+    #[ignore] // Relies on non-Karney outside files. Slow.
     fn test_vs_cpp_geomath_astroid() {
         // Line format: x y result
         // Note: In the geographiclib C++ library, this function is in Geodesic, but in Rust it's in geomath.
@@ -731,6 +733,110 @@ mod tests {
             let result = astroid(items[0], items[1]);
             let mut entries = delta_entries.lock().unwrap();
             entries[0].add(items[2], result, line_num);
+        });
+        println!();
+        delta_entries.lock().unwrap().iter().for_each(|entry| println!("{}", entry));
+        delta_entries.lock().unwrap().iter().for_each(|entry| entry.assert());
+    }
+
+    #[test]
+    #[ignore] // Relies on non-Karney outside files. Slow.
+    fn test_vs_cpp_geomath_a1m1f() {
+        // Line format: eps result
+        // Note: In the geographiclib C++ library, this function is in Geodesic, but in Rust it's in geomath.
+        let delta_entries = Arc::new(Mutex::new(DeltaEntry::new_vec(
+            "test_vs_cpp_geomath_a1m1f ", &[
+                ("result", 1e-15, false, false),
+            ])));
+        test_basic("Geodesic_A1m1f", 2, |line_num, items| {
+            let result = _A1m1f(items[0], crate::geodesic::GEODESIC_ORDER);
+            let mut entries = delta_entries.lock().unwrap();
+            entries[0].add(items[1], result, line_num);
+        });
+        println!();
+        delta_entries.lock().unwrap().iter().for_each(|entry| println!("{}", entry));
+        delta_entries.lock().unwrap().iter().for_each(|entry| entry.assert());
+    }
+
+    #[test]
+    #[ignore] // Relies on non-Karney outside files. Slow.
+    fn test_vs_cpp_geomath_a2m1f() {
+        // Line format: eps result
+        // Note: In the geographiclib C++ library, this function is in Geodesic, but in Rust it's in geomath.
+        let delta_entries = Arc::new(Mutex::new(DeltaEntry::new_vec(
+            "test_vs_cpp_geomath_a2m1f ", &[
+                ("result", 1e-15, false, false),
+            ])));
+        test_basic("Geodesic_A2m1f", 2, |line_num, items| {
+            let result = _A1m1f(items[0], crate::geodesic::GEODESIC_ORDER);
+            let mut entries = delta_entries.lock().unwrap();
+            entries[0].add(items[1], result, line_num);
+        });
+        println!();
+        delta_entries.lock().unwrap().iter().for_each(|entry| println!("{}", entry));
+        delta_entries.lock().unwrap().iter().for_each(|entry| entry.assert());
+    }
+
+    #[test]
+    #[ignore] // Relies on non-Karney outside files. Slow.
+    fn test_vs_cpp_geomath_c1f() {
+        // Line format: eps c-out(nC1_+1)
+        // Note: In the geographiclib C++ library, this function is in Geodesic, but in Rust it's in geomath.
+        let delta_entries = Arc::new(Mutex::new(DeltaEntry::new_vec(
+            "test_vs_cpp_geomath_c1f ", &[
+                ("c item", 0.0, false, false),
+            ])));
+        test_basic("Geodesic_C1f", crate::geodesic::GEODESIC_ORDER as isize + 2, |line_num, items| {
+            let mut c = [0.0; crate::geodesic::GEODESIC_ORDER as usize + 1];
+            _C1f(items[0], &mut c, crate::geodesic::GEODESIC_ORDER);
+            let mut entries = delta_entries.lock().unwrap();
+            for i in 0..c.len() {
+                entries[0].add(items[i], c[i], line_num);
+            }
+        });
+        println!();
+        delta_entries.lock().unwrap().iter().for_each(|entry| println!("{}", entry));
+        delta_entries.lock().unwrap().iter().for_each(|entry| entry.assert());
+    }
+
+    #[test]
+    #[ignore] // Relies on non-Karney outside files. Slow.
+    fn test_vs_cpp_geomath_c1pf() {
+        // Line format: eps c-out(nC1p_+1)
+        // Note: In the geographiclib C++ library, this function is in Geodesic, but in Rust it's in geomath.
+        let delta_entries = Arc::new(Mutex::new(DeltaEntry::new_vec(
+            "test_vs_cpp_geomath_c1pf ", &[
+                ("c item", 0.0, false, false),
+            ])));
+        test_basic("Geodesic_C1pf", crate::geodesic::GEODESIC_ORDER as isize + 2, |line_num, items| {
+            let mut c = [0.0; crate::geodesic::GEODESIC_ORDER as usize + 1];
+            _C1pf(items[0], &mut c, crate::geodesic::GEODESIC_ORDER);
+            let mut entries = delta_entries.lock().unwrap();
+            for i in 0..c.len() {
+                entries[0].add(items[i], c[i], line_num);
+            }
+        });
+        println!();
+        delta_entries.lock().unwrap().iter().for_each(|entry| println!("{}", entry));
+        delta_entries.lock().unwrap().iter().for_each(|entry| entry.assert());
+    }
+
+    #[test]
+    #[ignore] // Relies on non-Karney outside files. Slow.
+    fn test_vs_cpp_geomath_c2f() {
+        // Line format: eps c-out(nC1p_+1)
+        // Note: In the geographiclib C++ library, this function is in Geodesic, but in Rust it's in geomath.
+        let delta_entries = Arc::new(Mutex::new(DeltaEntry::new_vec(
+            "test_vs_cpp_geomath_c2f ", &[
+                ("c item", 0.0, false, false),
+            ])));
+        test_basic("Geodesic_C2f", crate::geodesic::GEODESIC_ORDER as isize + 2, |line_num, items| {
+            let mut c = [0.0; crate::geodesic::GEODESIC_ORDER as usize + 1];
+            _C2f(items[0], &mut c, crate::geodesic::GEODESIC_ORDER);
+            let mut entries = delta_entries.lock().unwrap();
+            for i in 0..c.len() {
+                entries[0].add(items[i], c[i], line_num);
+            }
         });
         println!();
         delta_entries.lock().unwrap().iter().for_each(|entry| println!("{}", entry));
