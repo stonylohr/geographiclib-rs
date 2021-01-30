@@ -60,17 +60,18 @@ impl GeodesicLine {
             None => caps::STANDARD | caps::DISTANCE_IN,
             Some(caps) => caps,
         };
-        let salp1 = match salp1 {
-            None => std::f64::NAN,
-            Some(salp1) => salp1,
-        };
-        let calp1 = match calp1 {
-            None => std::f64::NAN,
-            Some(calp1) => calp1,
+        let (azi1, salp1, calp1) = match (salp1, calp1) {
+            (None, None) => {
+                let azi1 = geomath::ang_normalize(azi1);
+                let (salp1, calp1) = geomath::sincosd(geomath::ang_round(azi1));
+                (azi1, salp1, calp1)
+            },
+            (Some(salp1), Some(calp1)) => (azi1, salp1, calp1),
+            _ => panic!("Specify either both salp1 and calp1 or neither, not mixed."),
         };
 
         // This was taken from geodesic, putting it here for convenience
-        let tiny_ = geomath::get_min_val().sqrt();
+        let tiny_ = geod.tiny_;
 
         let a = geod.a;
         let f = geod.f;
@@ -78,13 +79,6 @@ impl GeodesicLine {
         let _c2 = geod._c2;
         let _f1 = geod._f1;
         let caps = caps | caps::LATITUDE | caps::AZIMUTH | caps::LONG_UNROLL;
-        let (azi1, salp1, calp1) = if salp1.is_nan() || calp1.is_nan() {
-            let azi1 = geomath::ang_normalize(azi1);
-            let (salp1, calp1) = geomath::sincosd(geomath::ang_round(azi1));
-            (azi1, salp1, calp1)
-        } else {
-            (azi1, salp1, calp1)
-        };
         let lat1 = geomath::lat_fix(lat1);
 
         let (mut sbet1, mut cbet1) = geomath::sincosd(geomath::ang_round(lat1));
