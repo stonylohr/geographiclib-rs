@@ -2285,10 +2285,9 @@ mod tests {
     }
 
     #[test]
-    #[ignore] // Fails existing behavior.
     fn test_std_geodesic_geodsolve29() {
         // Check longitude unrolling with inverse calculation 2015-09-16
-        let geod = Geodesic::new(6.4e6, 0.1);
+        let geod = Geodesic::wgs84();
         let mut delta_entries = DeltaEntry::new_vec(
             "test_std_geodesic_geodsolve29", &[
                 ("s12" , 0.5  , false, false),
