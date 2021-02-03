@@ -536,7 +536,7 @@ mod tests {
         // Format: this-in[_a _f _lat1 _lon1 _azi1 _a13 _s13 _caps _salp0 _calp0 tiny_ _b _c2 _f1 _k2 _salp1 _calp1 _ssig1 _csig1 _dn1 _stau1 _ctau1 _somg1 _comg1 _A1m1 _A2m1 _A3c _B11 _B21 _B31 _A4 _B41 _C1a(nC1_+1) _C1pa(nC1p_+1) _C2a(nC2_+1) _C3a(nC3_) _C4a(nC4_)] arcmode s12_a12 outmask result=a12 lat2-out lon2-out azi2-out s12-out m12-out M12-out M21-out S12-out
         let delta_entries = Arc::new(Mutex::new(DeltaEntry::new_vec(
             "test_vs_cpp_geodesicline_gen_position ", &[
-                ("result (a12 or result.0)", 2e-16, true, false),
+                ("result (a12 or result.0)", 2e-13, false, false),
                 ("lat2-out (result.1)", 2e-14, false, false),
                 ("lon2-out (result.2)", 4e-9, false , false),
                 ("azi2-out (result.3)", 3e-14, false, false),
@@ -615,20 +615,20 @@ mod tests {
                 ("stau1", 0.0, false, false),
                 ("ctau1", 0.0, false, false),
                 ("somg1", 0.0, false, false),
-                ("comg1", 0.0, false, false),
+                ("comg1", 2e-16, false, false),
                 ("A1m1", 0.0, false, false),
                 ("A2m1", 0.0, false, false),
                 ("A3c", 0.0, false, false),
                 ("B11", 0.0, false, false),
-                ("B21", 5e-320, false, false),
+                ("B21", 0.0, false, false),
                 ("B31", 0.0, false, false),
                 ("A4", 0.0, false, false),
                 ("B41", 0.0, false, false),
                 ("C1a item", 0.0, false, false),
-                ("C1pa item", 3e-320, false, false),
+                ("C1pa item", 0.0, false, false),
                 ("C2a item", 0.0, false, false),
                 ("C3a item", 0.0, false, false),
-                ("C4a item", 7e-310, false, false),
+                ("C4a item", 0.0, false, false),
             ])));
         // 38 +... _C1a(nC1_+1) _C1pa(nC1p_+1) _C2a(nC2_+1) _C3a(nC3_) _C4a(nC4_)
         test_basic("GeodesicLine_GeodesicLine_5arg", 38 + 3 + 5 * (GEODESIC_ORDER as isize), |line_num, items| {
@@ -669,32 +669,40 @@ mod tests {
             entries[30].add(items[36], line._A4, line_num);
             entries[31].add(items[37], line._B41, line_num);
 
-            let mut i = 37;
+            let mut i = 38;
             assert_eq!(GEODESIC_ORDER as usize + 1, line._C1a.len(), "self._C1a size mismatch");
-            for item in &line._C1a {
+            // The first element isn't used, so isn't useful to compare.
+            for item in &line._C1a[1..] {
                 i += 1;
                 entries[32].add(items[i], *item, line_num);
             }
 
             assert_eq!(GEODESIC_ORDER as usize + 1, line._C1pa.len(), "self._C1pa size mismatch");
-            for item in &line._C1pa {
+            // The first element isn't used, so isn't useful to compare.
+            i += 1;
+            for item in &line._C1pa[1..] {
                 i += 1;
                 entries[33].add(items[i], *item, line_num);
             }
 
             assert_eq!(GEODESIC_ORDER as usize + 1, line._C2a.len(), "self._C2a size mismatch");
-            for item in &line._C2a {
+            // The first element isn't used, so isn't useful to compare.
+            i += 1;
+            for item in &line._C2a[1..] {
                 i += 1;
                 entries[34].add(items[i], *item, line_num);
             }
 
             assert_eq!(GEODESIC_ORDER as usize, line._C3a.len(), "self._C3a size mismatch");
-            for item in &line._C3a {
+            // The first element isn't used, so isn't useful to compare.
+            i += 1;
+            for item in &line._C3a[1..] {
                 i += 1;
                 entries[35].add(items[i], *item, line_num);
             }
 
             assert_eq!(GEODESIC_ORDER as usize, line._C4a.len(), "self._C4a size mismatch");
+            // All elements of _C4a are used
             for item in &line._C4a {
                 i += 1;
                 entries[36].add(items[i], *item, line_num);

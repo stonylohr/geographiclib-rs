@@ -579,7 +579,8 @@ mod tests {
         // Line format: y x result
         let delta_entries = Arc::new(Mutex::new(DeltaEntry::new_vec(
             "test_vs_cpp_geomath_atan2d ", &[
-                ("result", 5e-16, false, false),
+                // todo: this is a prime candidate for an ULP/step tolerance
+                ("result", 3e-14, false, false),
             ])));
         test_basic("Math_atan2d", 3, |line_num, items| {
             let result = atan2d(items[0], items[1]);
@@ -726,7 +727,7 @@ mod tests {
         // Note: In the geographiclib C++ library, this function is in Geodesic, but in Rust it's in geomath.
         let delta_entries = Arc::new(Mutex::new(DeltaEntry::new_vec(
             "test_vs_cpp_geomath_astroid ", &[
-                ("result", 1e-15, false, false),
+                ("result", 5e-16, false, false),
             ])));
         test_basic("Geodesic_Astroid", 3, |line_num, items| {
             let result = astroid(items[0], items[1]);
@@ -745,7 +746,7 @@ mod tests {
         // Note: In the geographiclib C++ library, this function is in Geodesic, but in Rust it's in geomath.
         let delta_entries = Arc::new(Mutex::new(DeltaEntry::new_vec(
             "test_vs_cpp_geomath_a1m1f ", &[
-                ("result", 1e-15, false, false),
+                ("result", 0.0, false, false),
             ])));
         test_basic("Geodesic_A1m1f", 2, |line_num, items| {
             let result = _A1m1f(items[0], crate::geodesic::GEODESIC_ORDER);
@@ -764,10 +765,10 @@ mod tests {
         // Note: In the geographiclib C++ library, this function is in Geodesic, but in Rust it's in geomath.
         let delta_entries = Arc::new(Mutex::new(DeltaEntry::new_vec(
             "test_vs_cpp_geomath_a2m1f ", &[
-                ("result", 1e-15, false, false),
+                ("result", 0.0, false, false),
             ])));
         test_basic("Geodesic_A2m1f", 2, |line_num, items| {
-            let result = _A1m1f(items[0], crate::geodesic::GEODESIC_ORDER);
+            let result = _A2m1f(items[0], crate::geodesic::GEODESIC_ORDER);
             let mut entries = delta_entries.lock().unwrap();
             entries[0].add(items[1], result, line_num);
         });
@@ -790,7 +791,7 @@ mod tests {
             _C1f(items[0], &mut c, crate::geodesic::GEODESIC_ORDER);
             let mut entries = delta_entries.lock().unwrap();
             for i in 0..c.len() {
-                entries[0].add(items[i], c[i], line_num);
+                entries[0].add(items[1 + i], c[i], line_num);
             }
         });
         println!();
@@ -811,8 +812,9 @@ mod tests {
             let mut c = [0.0; crate::geodesic::GEODESIC_ORDER as usize + 1];
             _C1pf(items[0], &mut c, crate::geodesic::GEODESIC_ORDER);
             let mut entries = delta_entries.lock().unwrap();
-            for i in 0..c.len() {
-                entries[0].add(items[i], c[i], line_num);
+            // Element 0 of this array is unused, and not initialized in c++, so value is unpredictable
+            for i in 1..c.len() {
+                entries[0].add(items[i + 1], c[i], line_num);
             }
         });
         println!();
@@ -833,8 +835,9 @@ mod tests {
             let mut c = [0.0; crate::geodesic::GEODESIC_ORDER as usize + 1];
             _C2f(items[0], &mut c, crate::geodesic::GEODESIC_ORDER);
             let mut entries = delta_entries.lock().unwrap();
-            for i in 0..c.len() {
-                entries[0].add(items[i], c[i], line_num);
+            // The first element isn't used, so isn't useful to compare.
+            for i in 1..c.len() {
+                entries[0].add(items[1+i], c[i], line_num);
             }
         });
         println!();

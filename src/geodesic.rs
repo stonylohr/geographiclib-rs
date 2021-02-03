@@ -1642,7 +1642,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore] // Fails existing behavior.
     fn test_arcdirect() {
         // Test arc direct
         // Corresponds with ArcDirectCheck from GeodesicTests.java
@@ -1651,7 +1650,7 @@ mod tests {
                 ("lat2", 1e-13, false, false),
                 ("lon2", 1e-13, false, false),
                 ("azi2", 1e-13, false, false),
-                ("s12",  1e-13, false, false),
+                ("s12",  1e-8, false, false),
                 ("m12",  1e-8,  false, false),
                 ("M12",  1e-15, false, false),
                 ("M21",  1e-15, false, false),
@@ -2661,12 +2660,12 @@ mod tests {
         // Line format: lat1 lon1 azi1 lat2 lon2 azi2 s12 a12 m12 S12
         let delta_entries = Arc::new(Mutex::new(DeltaEntry::new_vec(
             "test_geodtest_geodesic_direct12 ", &[
-                ("result.0 (lat2)", 1e-13, false, false),
-                ("result.1 (lon2)", 1e-7, false, false),
-                ("result.2 (azi2)", 1e-7, false , false),
-                ("result.3 (m12)", 1e-8, true, false),
+                ("result.0 (lat2)", 8e-14, false, false),
+                ("result.1 (lon2)", 2e-8, false, false),
+                ("result.2 (azi2)", 2e-8, false , false),
+                ("result.3 (m12)", 9e-9, false, false),
                 ("result.6 (S12)", 1e-7, true, false),
-                ("result.7 (a12)", 1e-13, true, false),
+                ("result.7 (a12)", 9e-14, false, false),
             ])));
         let g = Arc::new(Mutex::new(Geodesic::wgs84()));
         geodtest_basic(|line_num, &(lat1, lon1, azi1, lat2, lon2, azi2, s12, a12, m12, S12)| {
@@ -2694,12 +2693,12 @@ mod tests {
         let delta_entries = Arc::new(Mutex::new(DeltaEntry::new_vec(
             "test_geodtest_geodesic_direct21 ", &[
                 // Note that names below refer to transformed values, after the reversal.
-                ("result.0 (lat2)", 1e-13, false, false),
+                ("result.0 (lat2)", 8e-14, false, false),
                 ("result.1 (lon2)", 1e-7, false, false),
                 ("result.2 (azi2)", 1e-7, false , false),
-                ("result.3 (m12)", 1e-8, true, false),
+                ("result.3 (m12)", 9e-9, false, false),
                 ("result.6 (S12)", 1e-7, true, false),
-                ("result.7 (a12)", 1e-13, true, false),
+                ("result.7 (a12)", 3e-14, true, false),
             ])));
         let g = Arc::new(Mutex::new(Geodesic::wgs84()));
         geodtest_basic(|line_num, vals| {
@@ -2733,7 +2732,7 @@ mod tests {
                 ("result.2 (azi2)", 1e-7, false , false),
                 ("result.3 (m12)", 1e-8, true, false),
                 ("result.4 (S12)", 1e-7, true, false),
-                ("result.5 (a12)", 1e-13, true, false),
+                ("result.5 (a12)", 2e-10, false, false),
             ])));
         let g = Arc::new(Mutex::new(Geodesic::wgs84()));
         geodtest_basic(|line_num, &(lat1, lon1, azi1, lat2, lon2, azi2, s12, a12, m12, S12)| {
@@ -2766,7 +2765,7 @@ mod tests {
                 ("result.2 (azi2)", 1e-7, false , false),
                 ("result.3 (m12)", 1e-8, true, false),
                 ("result.4 (S12)", 1e-7, true, false),
-                ("result.5 (a12)", 1e-13, true, false),
+                ("result.5 (a12)", 2e-10, false, false),
             ])));
         let g = Arc::new(Mutex::new(Geodesic::wgs84()));
         geodtest_basic(|line_num, vals| {
@@ -2793,75 +2792,60 @@ mod tests {
     // These tests are flagged as "ignore" because they're slow and not self-contained
     // (since they need to read data files), so they only run if specifically requested.
 
-    // Set Geodesic properties based on an array of items.
-    // Needed for some functions that are called partway through construction.
-    fn set_geod(g: &mut Geodesic, items: &[f64]) {
-        // items: _a _f maxit2_ tiny_ tol0_ tol1_ tol2_ tolb_ xthresh_ _f1 _e2 _ep2 _n _b _c2 _etol2 _A3x(nA3x_) _C3x(nC3x_) _C4x(nC4x_)
-        assert_eq!(g.a, items[0]);
-        assert_eq!(g.f, items[1]);
-        g.maxit2_ = items[2] as u64;
-        g.tiny_ = items[3];
-        g.tol0_ = items[4];
-        g.tol1_ = items[5];
-        g.tol2_ = items[6];
-        g.tolb_ = items[7];
-        g.xthresh_ = items[8];
-        g._f1 = items[9];
-        g._e2 = items[10];
-        g._ep2 = items[11];
-        g._n = items[12];
-        g._b = items[13];
-        g._c2 = items[14];
-        g._etol2 = items[15];
-
-        // _A3x(nA3x_) _C3x(nC3x_) _C4x(nC4x_)
-
-        let mut i = 15;
-        assert_eq!(GEODESIC_ORDER as usize, g._A3x.len(), "self._A3x size mismatch");
-        for item in &mut g._A3x {
-            i += 1;
-            *item = items[i];
-        }
-
-        assert_eq!(nC3x_ as usize, g._C3x.len(), "self._C3x size mismatch");
-        for item in &mut g._C3x {
-            i += 1;
-            *item = items[i];
-        }
-
-        assert_eq!(nC4x_ as usize, g._C4x.len(), "self._C4x size mismatch");
-        for item in &mut g._C4x {
-            i += 1;
-            *item = items[i];
-        }
-    }
-
     // Note: For Geodesic_A1m1f, see geomath_tests.rs
     // Note: For Geodesic_A2m1f, see geomath_tests.rs
 
-    // placeholder: Geodesic_A3coeff
+    // A3coeff doesn't get its own function in geographiclib-rs, so this work-around just duplicates the logic.
+    fn _A3coeff( _n: f64) -> [f64; GEODESIC_ORDER as usize] {
+        let mut _A3x: [f64; GEODESIC_ORDER as usize] = [0.0; GEODESIC_ORDER as usize];
+        let mut o: i64 = 0;
+        let mut k = 0;
+        for j in (0..GEODESIC_ORDER).rev() {
+            let m = j.min(GEODESIC_ORDER as i64 - j - 1);
+            _A3x[k as usize] = geomath::polyval(m as isize, &COEFF_A3[o as usize..], _n)
+                / COEFF_A3[(o + m + 1) as usize] as f64;
+            k += 1;
+            o += m + 2;
+        }
+        _A3x
+    }
+
+    #[test]
+    #[ignore] // Relies on non-Karney outside files. Slow.
+    fn test_vs_cpp_geodesic_a3coeff() {
+        // Line format: _n-in _A3x-out(nA3x_)
+        let delta_entries = Arc::new(Mutex::new(DeltaEntry::new_vec(
+            "test_vs_cpp_geodesic_a3coeff ", &[
+                ("_A3x item", 0.0, false, false),
+            ])));
+        test_basic("Geodesic_A3coeff", 1 + GEODESIC_ORDER as isize, |line_num, items| {
+            let result = _A3coeff(items[0]);
+            let mut entries = delta_entries.lock().unwrap();
+            for i in 0..result.len() {
+                entries[0].add(items[1 + i], result[i], line_num);
+            }
+        });
+        println!();
+        delta_entries.lock().unwrap().iter().for_each(|entry| println!("{}", entry));
+        delta_entries.lock().unwrap().iter().for_each(|entry| entry.assert());
+    }
 
     #[test]
     #[ignore] // Relies on non-Karney outside files. Slow.
     fn test_vs_cpp_geodesic_a3f() {
-        // let consts = util::read_consts_basic("Geodesic_consts", 14);
-        // // consts: nA1_ nC1_ nC1p_ nA2_ nC2_ nA3_ nA3x_ nC3_ nC3x_ nC4_ nC4x_ nC_ maxit1_ GEOGRAPHICLIB_GEODESIC_ORDER
-        // #[allow(non_snake_case)]
-        // let nA3x_ = consts[6] as usize;
-        // // 18 + nA3x_=6 + nC3x_=15 + nC4x_=21
-        let arg_count = 4; // 18 + nA3x_ + nC3x_ as usize + nC4x_ as usize;
-
-        // Line format: this-in[_a _f] eps result
+        // Line format: _A3x(nA3x_) eps result
         let delta_entries = Arc::new(Mutex::new(DeltaEntry::new_vec(
             "test_vs_cpp_geodesic_a3f ", &[
                 ("result", 0.0, false, false),
             ])));
-        test_basic("Geodesic_A3f", -1, |line_num, items| {
-            assert!(items.len() == arg_count, "Expected {} items per line. Line {} had {}.", arg_count, line_num, items.len());
-            let g = Geodesic::new(items[0], items[1]);
-            let result = g._A3f(items[arg_count - 2]);
+        test_basic("Geodesic_A3f", 2 + GEODESIC_ORDER as isize, |line_num, items| {
+            let mut g = Geodesic::wgs84(); // Fakey geodesic
+            for i in 0..GEODESIC_ORDER as usize {
+                g._A3x[i] = items[i];
+            }
+            let result = g._A3f(items[GEODESIC_ORDER as usize]);
             let mut entries = delta_entries.lock().unwrap();
-            entries[0].add(items[arg_count - 1], result, line_num);
+            entries[0].add(items[GEODESIC_ORDER as usize + 1], result, line_num);
         });
         println!();
         delta_entries.lock().unwrap().iter().for_each(|entry| println!("{}", entry));
@@ -2873,32 +2857,36 @@ mod tests {
     // Note: For Geodesic_C1pf, see geomath_tests.rs
     // Note: For Geodesic_C2f, see geomath_tests.rs
 
-    // placeholder: Geodesic_C3coeff
+    // C3coeff doesn't get its own function in geographiclib-rs, so this work-around just duplicates the logic.
+    fn _C3coeff(_n: f64) -> [f64; nC3x_ as usize] {
+        let mut _C3x: [f64; nC3x_ as usize] = [0.0; nC3x_ as usize];
+        let mut o: i64 = 0;
+        let mut k = 0;
+        for l in 1..GEODESIC_ORDER {
+            for j in (l..GEODESIC_ORDER).rev() {
+                let m = j.min(GEODESIC_ORDER as i64 - j - 1);
+                _C3x[k as usize] = geomath::polyval(m as isize, &COEFF_C3[o as usize..], _n)
+                    / COEFF_C3[(o + m + 1) as usize] as f64;
+                k += 1;
+                o += m + 2;
+            }
+        }
+        _C3x
+    }
 
     #[test]
     #[ignore] // Relies on non-Karney outside files. Slow.
-    fn test_vs_cpp_geodesic_c3f() {
-        let consts = util::read_consts_basic("Geodesic_consts", 14);
-        // consts: nA1_ nC1_ nC1p_ nA2_ nC2_ nA3_ nA3x_ nC3_ nC3x_ nC4_ nC4x_ nC_ maxit1_ GEOGRAPHICLIB_GEODESIC_ORDER
-        #[allow(non_snake_case)]
-        let nA3x_ = consts[6] as usize;
-        // 18 + nA3x_=6 + nC3x_=15 + nC4x_=21
-        let arg_count = 17 + GEODESIC_ORDER as usize + nA3x_ + nC3x_ as usize + nC4x_ as usize;
-
-        // Line format: this-in[_a _f maxit2_ tiny_ tol0_ tol1_ tol2_ tolb_ xthresh_ _f1 _e2 _ep2 _n _b _c2 _etol2 _A3x(nA3x_) _C3x(nC3x_) _C4x(nC4x_)] eps c-out(nC3_)
+    fn test_vs_cpp_geodesic_c3coeff() {
+        // Line format: _n-in _C3x-out(nC3x_)
         let delta_entries = Arc::new(Mutex::new(DeltaEntry::new_vec(
-            "test_vs_cpp_geodesic_c3f ", &[
-                ("result", 0.0, false, false),
+            "test_vs_cpp_geodesic_c3coeff ", &[
+                ("_C3x item", 0.0, false, false),
             ])));
-        test_basic("Geodesic_C3f", -1, |line_num, items| {
-            assert!(items.len() == arg_count, "Expected {} items per line. Line {} had {}.", arg_count, line_num, items.len());
-            let mut g = Geodesic::new(items[0], items[1]);
-            set_geod(&mut g, items);
-            let mut c = [0.0; crate::geodesic::GEODESIC_ORDER as usize];
-            g._C3f(items[arg_count - 2], &mut c);
+        test_basic("Geodesic_C3coeff", 1 + nC3x_ as isize, |line_num, items| {
+            let result = _C3coeff(items[0]);
             let mut entries = delta_entries.lock().unwrap();
-            for i in 0..c.len() {
-                entries[0].add(items[arg_count - GEODESIC_ORDER as usize + i], c[i], line_num);
+            for i in 0..result.len() {
+                entries[0].add(items[1 + i], result[i], line_num);
             }
         });
         println!();
@@ -2906,32 +2894,87 @@ mod tests {
         delta_entries.lock().unwrap().iter().for_each(|entry| entry.assert());
     }
 
-    // placeholder: Geodesic_C4coeff
+    #[test]
+    #[ignore] // Relies on non-Karney outside files. Slow.
+    fn test_vs_cpp_geodesic_c3f() {
+        // Line format: _C3x-in(nC3x_) eps c-out(nC3_)
+        let delta_entries = Arc::new(Mutex::new(DeltaEntry::new_vec(
+            "test_vs_cpp_geodesic_c3f ", &[
+                ("result", 0.0, false, false),
+            ])));
+        test_basic("Geodesic_C3f", nC3x_ as isize + 1 + GEODESIC_ORDER as isize, |line_num, items| {
+            let mut g = Geodesic::wgs84(); // Fakey geodesic
+            for i in 0..nC3x_ as usize {
+                g._C3x[i] = items[i];
+            }
+            let mut c = [0.0; crate::geodesic::GEODESIC_ORDER as usize];
+            g._C3f(items[nC3x_ as usize], &mut c);
+            let mut entries = delta_entries.lock().unwrap();
+            // The first element isn't used, and isn't initialized in C++.
+            for i in 1..c.len() {
+                entries[0].add(items[nC3x_ as usize + 1 + i], c[i], line_num);
+            }
+        });
+        println!();
+        delta_entries.lock().unwrap().iter().for_each(|entry| println!("{}", entry));
+        delta_entries.lock().unwrap().iter().for_each(|entry| entry.assert());
+    }
+
+    // C4coeff doesn't get its own function in geographiclib-rs, so this work-around just duplicates the logic.
+    fn _C4coeff(_n: f64) -> [f64; nC4x_ as usize] {
+        let mut _C4x: [f64; nC4x_ as usize] = [0.0; nC4x_ as usize];
+        let mut o: i64 = 0;
+        let mut k = 0;
+        for l in 0..GEODESIC_ORDER {
+            for j in (l..GEODESIC_ORDER).rev() {
+                let m = GEODESIC_ORDER as i64 - j - 1;
+                _C4x[k as usize] = geomath::polyval(m as isize, &COEFF_C4[o as usize..], _n)
+                    / COEFF_C4[(o + m + 1) as usize] as f64;
+                k += 1;
+                o += m + 2;
+            }
+        }
+        _C4x
+    }
+
+    #[test]
+    #[ignore] // Relies on non-Karney outside files. Slow.
+    fn test_vs_cpp_geodesic_c4coeff() {
+        // Line format: _n-in _C4x-out(nC4x_)
+        let delta_entries = Arc::new(Mutex::new(DeltaEntry::new_vec(
+            "test_vs_cpp_geodesic_c4coeff ", &[
+                ("_C4x item", 0.0, false, false),
+            ])));
+        test_basic("Geodesic_C4coeff", 1 + nC4x_ as isize, |line_num, items| {
+            let result = _C4coeff(items[0]);
+            let mut entries = delta_entries.lock().unwrap();
+            for i in 0..result.len() {
+                entries[0].add(items[1 + i], result[i], line_num);
+            }
+        });
+        println!();
+        delta_entries.lock().unwrap().iter().for_each(|entry| println!("{}", entry));
+        delta_entries.lock().unwrap().iter().for_each(|entry| entry.assert());
+    }
 
     #[test]
     #[ignore] // Relies on non-Karney outside files. Slow.
     fn test_vs_cpp_geodesic_c4f() {
-        let consts = util::read_consts_basic("Geodesic_consts", 14);
-        // consts: nA1_ nC1_ nC1p_ nA2_ nC2_ nA3_ nA3x_ nC3_ nC3x_ nC4_ nC4x_ nC_ maxit1_ GEOGRAPHICLIB_GEODESIC_ORDER
-        #[allow(non_snake_case)]
-        let nA3x_ = consts[6] as usize;
-        // 18 + nA3x_=6 + nC3x_=15 + nC4x_=21
-        let arg_count = 17 + GEODESIC_ORDER as usize + nA3x_ + nC3x_ as usize + nC4x_ as usize;
-
-        // Line format: this-in[_a _f maxit2_ tiny_ tol0_ tol1_ tol2_ tolb_ xthresh_ _f1 _e2 _ep2 _n _b _c2 _etol2 _A3x(nA3x_) _C3x(nC3x_) _C4x(nC4x_)] eps c-out(nC4_)
+        // Line format: _C4x-in(nC4x_) eps c-out(nC4_)
         let delta_entries = Arc::new(Mutex::new(DeltaEntry::new_vec(
             "test_vs_cpp_geodesic_c4f ", &[
                 ("result", 0.0, false, false),
             ])));
-        test_basic("Geodesic_C4f", -1, |line_num, items| {
-            assert!(items.len() == arg_count, "Expected {} items per line. Line {} had {}.", arg_count, line_num, items.len());
-            let mut g = Geodesic::new(items[0], items[1]);
-            set_geod(&mut g, items);
+        test_basic("Geodesic_C4f", nC4x_ as isize + 1 + GEODESIC_ORDER as isize, |line_num, items| {
+            let mut g = Geodesic::wgs84(); // Fakey geodesic
+            for i in 0..nC4x_ as usize {
+                g._C4x[i] = items[i];
+            }
             let mut c = [0.0; crate::geodesic::GEODESIC_ORDER as usize];
-            g._C4f(items[arg_count - 2], &mut c);
+            g._C4f(items[nC4x_ as usize], &mut c);
             let mut entries = delta_entries.lock().unwrap();
             for i in 0..c.len() {
-                entries[0].add(items[arg_count - GEODESIC_ORDER as usize + i], c[i], line_num);
+                entries[0].add(items[nC4x_ as usize + 1 + i], c[i], line_num);
             }
         });
         println!();
@@ -2969,37 +3012,38 @@ mod tests {
                 ("azi2-out (result.3)", 1e-15, false, false),
                 ("s12-out (result.4)", 1e-15, true, false),
                 ("m12-out (result.5)", 1e-15, true, false),
-                ("M12-out (result.6)", 1e-15, true, false),
-                ("M21-out (result.7)", 1e-15, true, false),
+                ("M12-out (result.6)", 1e-15, false, false),
+                ("M21-out (result.7)", 1e-15, false, false),
                 ("S12-out (result.8)", 1e-15, true, false),
             ])));
         test_basic("Geodesic_GenDirect", 17, |line_num, items| {
             let g = Geodesic::new(items[0], items[1]);
             let outmask = items[7] as u64;
-            let result = g._gen_direct(items[2], items[3], items[4], items[5] != 1e-13, items[6], outmask);
+            let (a12, lat2, lon2, azi2, s12, m12, M12, M21, S12) =
+                g._gen_direct(items[2], items[3], items[4], items[5] != 1e-13, items[6], outmask);
             let mut entries = delta_entries.lock().unwrap();
-            entries[0].add(items[8], result.0, line_num);
+            entries[0].add(items[8], a12, line_num);
             if outmask & caps::LATITUDE != 0 {
-                entries[1].add(items[9], result.1, line_num);
+                entries[1].add(items[9], lat2, line_num);
             }
             if outmask & caps::LONGITUDE != 0 {
-                entries[2].add(items[10], result.2, line_num);
+                entries[2].add(items[10], lon2, line_num);
             }
             if outmask & caps::AZIMUTH != 0 {
-                entries[3].add(items[11], result.3, line_num);
+                entries[3].add(items[11], azi2, line_num);
             }
             if outmask & caps::DISTANCE != 0 {
-                entries[4].add(items[12], result.4, line_num);
+                entries[4].add(items[12], s12, line_num);
             }
             if outmask & caps::REDUCEDLENGTH != 0 {
-                entries[5].add(items[13], result.5, line_num);
+                entries[5].add(items[13], m12, line_num);
             }
             if outmask & caps::GEODESICSCALE != 0 {
-                entries[6].add(items[14], result.6, line_num);
-                entries[7].add(items[15], result.7, line_num);
+                entries[6].add(items[14], M12, line_num);
+                entries[7].add(items[15], M21, line_num);
             }
             if outmask & caps::AREA != 0 {
-                entries[8].add(items[16], result.8, line_num);
+                entries[8].add(items[16], S12, line_num);
             }
         });
         println!();
@@ -3015,14 +3059,14 @@ mod tests {
         // Format: this-in[_a _f] lat1 lon1 lat2 lon2 outmask result=a12 s12-out azi1-out azi2-out m12-out M12-out M21-out S12-out
         let delta_entries = Arc::new(Mutex::new(DeltaEntry::new_vec(
             "test_vs_cpp_geodesic_gen_inverse_azi ", &[
-                ("result (a12 or result.0)", 1e-15, true, false),
-                ("s12-out (result.1)", 1e-15, true, false),
-                ("azi1-out (result.2)", 1e-9, false , false),
-                ("azi2-out (result.3)", 1e-9, false, false),
+                ("result (a12 or result.0)", 3e-14, false, false),
+                ("s12-out (result.1)", 4e-16, true, false),
+                ("azi1-out (result.2)", 3e-10, false , false),
+                ("azi2-out (result.3)", 3e-10, false, false),
                 ("m12-out (result.4)", 1e-13, true, false),
                 ("M12-out (result.5)", 1e-13, true, false),
                 ("M21-out (result.6)", 1e-13, true, false),
-                ("S12-out (result.7)", 1e-6, true, false),
+                ("S12-out (result.7)", 2e-15, true, false),
             ])));
         test_basic("Geodesic_GenInverse_out7", 15, |line_num, items| {
             let g = Geodesic::new(items[0], items[1]);
@@ -3059,16 +3103,16 @@ mod tests {
         // Format: this-in[_a _f] lat1 lon1 lat2 lon2 outmask result=a12 s12-out salp1-out calp1-out salp2-out calp2-out m12-out M12-out M21-out S12-out
         let delta_entries = Arc::new(Mutex::new(DeltaEntry::new_vec(
             "test_vs_cpp_geodesic_gen_inverse ", &[
-                ("result (a12 or result.0)", 1e-13, true, false),
-                ("s12-out (result.1)",   1e-8, true, false),
+                ("result (a12 or result.0)", 3e-14, false, false),
+                ("s12-out (result.1)",   4e-16, true, false),
                 ("salp1-out (result.2)", 1e-14, false, false),
-                ("calp1-out (result.3)", 1e-11, false, false),
+                ("calp1-out (result.3)", 5e-12, false, false),
                 ("salp2-out (result.4)", 1e-14, false, false),
-                ("calp2-out (result.5)", 1e-11, false, false),
-                ("m12-out (result.6)",   1e-14, true, false),
-                ("M12-out (result.7)",   1e-14, true, false),
-                ("M21-out (result.8)",   1e-14, true, false),
-                ("S12-out (result.9)",   1e-15, true, false),
+                ("calp2-out (result.5)", 5e-12, false, false),
+                ("m12-out (result.6)",   3e-11, false, false),
+                ("M12-out (result.7)",   2e-15, false, false),
+                ("M21-out (result.8)",   3e-15, false, false),
+                ("S12-out (result.9)",   2e-15, true, false),
             ])));
         test_basic("Geodesic_GenInverse_out9", 17, |line_num, items| {
             let g = Geodesic::new(items[0], items[1]);
@@ -3142,8 +3186,7 @@ mod tests {
                 ("_C3x item", 0.0, false, false), // 1 delta entry, items i = 18+nA3x_..18+nA3x_+nC3x_
                 ("_C4x item", 0.0, false, false), // 1 delta entry, items i = 18+nA3x_+nC3x_..18+nA3x_+nC3x_+nC4x_
             ])));
-        test_basic("Geodesic_Geodesic", -1, |line_num, items| {
-            assert!(items.len() == arg_count, "Expected {} items per line. Line {} had {}.", arg_count, line_num, items.len());
+        test_basic("Geodesic_Geodesic", arg_count as isize, |line_num, items| {
             let g = Geodesic::new(items[0], items[1]);
             let mut entries = delta_entries.lock().unwrap();
             entries[0].add(consts[12], g.maxit1_ as f64, line_num);
@@ -3199,8 +3242,8 @@ mod tests {
         let delta_entries = Arc::new(Mutex::new(DeltaEntry::new_vec(
             "test_vs_cpp_geodesic_inverse_start ", &[
                 ("result (sig12 or result.0)", 0.0, false, false),
-                ("salp1-out (result.1)", 1e-15, false, false),
-                ("calp1-out (result.2)", 1e-15, false, false),
+                ("salp1-out (result.1)", 3e-16, false, false),
+                ("calp1-out (result.2)", 3e-16, false, false),
                 ("salp2-out (result.3)", 0.0, false, false),
                 ("calp2-out (result.4)", 0.0, false, false),
                 ("dnm-out (result.5)", 0.0, false, false),
@@ -3278,7 +3321,7 @@ mod tests {
         let delta_entries = Arc::new(Mutex::new(DeltaEntry::new_vec(
             "test_vs_cpp_geodesic_lengths ", &[
                 ("s12b-out (result.0)", 0.0, false, false),
-                ("m12b-out (result.1)", 1e-5, false, false),
+                ("m12b-out (result.1)", 0.0, false, false),
                 ("m0-out (result.2)", 0.0, false, false),
                 ("M12-out (result.3)", 0.0, false, false),
                 ("M21-out (result.4)", 0.0, false, false),

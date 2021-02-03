@@ -278,8 +278,8 @@ impl DeltaEntry {
         } else {
             diff_abs
         };
-        let is_diff_worst = util::is_delta_worse(diff_better, self.diff_abs) && 
-            (!self.check_rel || util::is_delta_worse(diff_better, self.diff_rel));
+        let is_diff_worst = util::is_delta_worse(diff_better, self.diff_abs) || 
+            (self.check_rel && util::is_delta_worse(diff_better, self.diff_rel));
         // Funky negation on next line is intentional, to get desired nan behavior.
         if !(diff_abs == 0.0) {
             self.summary_diff.add(x, y, line_num, is_diff_worst);

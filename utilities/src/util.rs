@@ -10,6 +10,10 @@ use std::u64;
 
 pub const DAT_PATH_RELATIVE: &str = "test_fixtures/test_data_unzipped";
 
+const GEOGRAPHICLIB_VERSION_TAG: &str = &"1005100";
+// The trailing colon simplifies the consuming logic a little.
+const INSTRUMENTED_VERSION_TAG: &str = &"400:";
+
 // Expected paths for zipped and unzipped versions of a file.
 pub struct DataPathPair {
     pub path_zip: path::PathBuf,
@@ -231,6 +235,15 @@ pub fn read_consts_basic(op_name: &str, arg_count: isize) -> Vec<f64> {
         result
 }
 
+fn confirm_cpp_dat_version(first_line: &str) {
+    // Loosely confirm a generic format header line...
+    // operation geographiclib_version instrumented-crude_version: operation-specific information
+    let items: Vec<&str> = first_line.split(' ').collect();
+    assert!(items.len() > 3, "Expected at least 3 spaces in data file header line");
+    assert_eq!(items[1], GEOGRAPHICLIB_VERSION_TAG, "Unexpected geographiclib version numer in data file header line");
+    assert_eq!(items[2], INSTRUMENTED_VERSION_TAG, "Unexpected instrumented version numer in data file header line");
+}
+
 // Centralized logic for reading through a generic geographiclib instrumented-crude data file.
 // Each file has a single header line that indicates operation type, version numbers,
 // and data line value meanings. Each additional line is a space-separated list of values.
@@ -249,21 +262,23 @@ pub fn test_numeric<T>(file: &File, skip_count: usize, arg_count: isize, f: T)
 {
     let reader = io::BufReader::new(file);
     reader.lines().enumerate()
-        // Skip header lines
-        .filter(|(i, _line)| *i >= skip_count)
         .for_each(|(i, line)| {
             let line_safe = line.expect("Failed to read line");
-            let items: Vec<f64> = line_safe.split(' ').enumerate()
-            .map(|(j, item)| {
-                match as_f64(item) {
-                    Ok(parsed) => parsed,
-                    Err(_error) => panic!("Error parsing item {} on line {}: {}", j+1, i+1, item),
-                }                    
-            })
-            .collect();
-        assert!(arg_count < 0 || items.len() == arg_count as usize, "Expected {} items per line. Line {} had {}: {}", arg_count, i, items.len(), line_safe);
-            // Report 1-based line number, rather than 0-based
-            f(i+1, &items);
+            if i >= skip_count {
+                let items: Vec<f64> = line_safe.split(' ').enumerate()
+                .map(|(j, item)| {
+                    match as_f64(item) {
+                        Ok(parsed) => parsed,
+                        Err(_error) => panic!("Error parsing item {} on line {}: {}", j+1, i+1, item),
+                    }                    
+                })
+                .collect();
+                assert!(arg_count < 0 || items.len() == arg_count as usize, "Expected {} items per line. Line {} had {}: {}", arg_count, i, items.len(), line_safe);
+                // Report 1-based line number, rather than 0-based
+                f(i+1, &items);
+            } else if i == 0 {
+                confirm_cpp_dat_version(&line_safe);
+            }
         });
 }
 
