@@ -357,6 +357,28 @@ pub fn _C2f(eps: f64, c: &mut [f64], geodesic_order: i64) {
     }
 }
 
+// todo: remove
+// pub fn fmt_hex(u: u64) -> String {
+//     format!("{:x}", u)
+// }
+// pub fn fmt_i64(i: i64) -> String {
+//     format!("{}", i)
+// }
+// pub fn fmt_f64(f: f64) -> String {
+//     let sign_helper = if f.is_sign_negative() && (f.is_nan() || f == 0.0) {
+//         "-"
+//     } else {
+//         ""
+//     };
+//     let root1 = format!("{}", f);
+//     let root2 = format!("{:e}", f);
+//     format!("{}{}", sign_helper, if root2.len() < root1.len() {root2} else {root1})
+// }
+// pub fn fmt_slice_f64(v: &[f64]) -> String {
+//     let v2: Vec<String> = v.iter().map(|&o| fmt_f64(o)).collect();
+//     v2.join(" ")
+// }
+
 #[cfg(test)]
 mod tests {
     extern crate utilities;

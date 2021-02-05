@@ -612,7 +612,7 @@ impl Geodesic {
         const CARR_SIZE: usize = GEODESIC_ORDER as usize + 1;
         let mut C1a: [f64; CARR_SIZE] = [0.0; CARR_SIZE];
         let mut C2a: [f64; CARR_SIZE] = [0.0; CARR_SIZE];
-        let mut C3a: [f64; CARR_SIZE] = [0.0; CARR_SIZE];
+        let mut C3a: [f64; GEODESIC_ORDER as usize] = [0.0; GEODESIC_ORDER as usize];
 
         let mut meridian = lat1 == -90.0 || slam12 == 0.0;
         let mut calp1 = 0.0;
@@ -826,7 +826,7 @@ impl Geodesic {
                 let A4 = geomath::sq(self.a) * calp0 * salp0 * self._e2;
                 geomath::norm(&mut ssig1, &mut csig1);
                 geomath::norm(&mut ssig2, &mut csig2);
-                let mut C4a: [f64; CARR_SIZE] = [0.0; CARR_SIZE];
+                let mut C4a: [f64; GEODESIC_ORDER as usize] = [0.0; GEODESIC_ORDER as usize];
                 self._C4f(eps, &mut C4a);
                 let B41 = geomath::sin_cos_series(false, ssig1, csig1, &C4a);
                 let B42 = geomath::sin_cos_series(false, ssig2, csig2, &C4a);
@@ -3259,9 +3259,12 @@ mod tests {
             entries[0].add(items[11], result.0, line_num);
             entries[1].add(items[12], result.1, line_num);
             entries[2].add(items[13], result.2, line_num);
-            entries[3].add(items[14], result.3, line_num);
-            entries[4].add(items[15], result.4, line_num);
-            entries[5].add(items[16], result.5, line_num);
+            if result.0 >= 0.0 {
+                // C++ only sometimes sets these values
+                entries[3].add(items[14], result.3, line_num);
+                entries[4].add(items[15], result.4, line_num);
+                entries[5].add(items[16], result.5, line_num);
+            }
         });
         println!();
         delta_entries.lock().unwrap().iter().for_each(|entry| println!("{}", entry));
