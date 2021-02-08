@@ -413,5 +413,46 @@ pub fn help_sign(x: f64) -> String {
 //             f64::hypot(dlat, dlon)
 //         }
 //     }
-    
-    
+
+// // A function for use with classes like MGRS and DMS that take string inputs and outputs, which
+// // may contain spaces that need to be escaped to avoid issues with out usual space-delimited format.
+// fn unescape_all(s: &String) -> String {
+//     let chars1 = s.as_bytes();
+//     let mut chars2 = chars1.to_owned();
+//     let len = chars1.len();
+//     let mut i_from: usize = 0;
+//     let mut i_to: usize = 0;
+//     const BACKSLASH: u8 = '\\' as u8;
+//     const LOWER_S: u8 = 's' as u8;
+//     const SPACE: u8 = ' ' as u8;
+//     const ZERO: u8 = '0' as u8;
+//     const NOTHING: u8 = '\0' as u8;
+//     while i_from < len {
+//         let c = chars1[i_from];
+//         i_from += 1;
+//         if c == BACKSLASH {
+//             if i_from >= len {
+//                 panic!("Invalid escape sequence. Item ended with single backslash.");
+//             }
+//             let c_swap = match chars1[i_from] {
+//                 BACKSLASH => BACKSLASH,
+//                 LOWER_S => SPACE,
+//                 ZERO => NOTHING,
+//                 _ => panic!("Invalid escape sequence \\{}", &s[i_from..i_from+1])
+//             };
+//             if c_swap != NOTHING {
+//                 chars2[i_to] = c_swap;
+//                 i_to += 1;
+//             }
+//         } else {
+//             chars2[i_to] = c;
+//             i_to += 1;
+//         }
+//     }
+
+//     for i in i_to..len {
+//         chars2[i] = NOTHING;
+//     }
+//     let copy = String::from_utf8(chars2).expect("Failed to create new string");
+//     return copy;
+// }
