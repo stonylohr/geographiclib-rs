@@ -2664,9 +2664,12 @@ mod tests {
                 ("result.0 (lat2)", 8e-14, false, false),
                 ("result.1 (lon2)", 2e-8, false, false),
                 ("result.2 (azi2)", 2e-8, false , false),
-                ("result.3 (m12)", 9e-9, false, false),
-                ("result.6 (S12)", 1e-7, true, false),
-                ("result.7 (a12)", 9e-14, false, false),
+                ("result.3 (m12) abs", 9e-9, false, false),
+                ("result.3 (m12) rel", 0.0, true, false),
+                ("result.6 (S12) abs", 0.0, false, false),
+                ("result.6 (S12) rel", 1e-7, true, false),
+                ("result.7 (a12) abs", 9e-14, false, false),
+                ("result.7 (a12) rel", 0.0, true, false),
             ])));
         let g = Arc::new(Mutex::new(Geodesic::wgs84()));
         geodtest_basic(|line_num, &(lat1, lon1, azi1, lat2, lon2, azi2, s12, a12, m12, S12)| {
@@ -2679,8 +2682,11 @@ mod tests {
             entries[1].add(lon2, lon2_out, line_num);
             entries[2].add(azi2, azi2_out, line_num);
             entries[3].add(m12, m12_out, line_num);
-            entries[4].add(S12, S12_out, line_num);
-            entries[5].add(a12, a12_out, line_num);
+            entries[4].add(m12, m12_out, line_num);
+            entries[5].add(S12, S12_out, line_num);
+            entries[6].add(S12, S12_out, line_num);
+            entries[7].add(a12, a12_out, line_num);
+            entries[8].add(a12, a12_out, line_num);
         });
         println!();
         delta_entries.lock().unwrap().iter().for_each(|entry| println!("{}", entry));
@@ -2697,9 +2703,12 @@ mod tests {
                 ("result.0 (lat2)", 8e-14, false, false),
                 ("result.1 (lon2)", 1e-7, false, false),
                 ("result.2 (azi2)", 1e-7, false , false),
-                ("result.3 (m12)", 9e-9, false, false),
-                ("result.6 (S12)", 1e-7, true, false),
-                ("result.7 (a12)", 3e-14, true, false),
+                ("result.3 (m12) abs", 9e-9, false, false),
+                ("result.3 (m12) rel", 0.0, true, false),
+                ("result.6 (S12) abs", 0.0, false, false),
+                ("result.6 (S12) rel", 1e-7, true, false),
+                ("result.7 (a12) abs", 0.0, false, false),
+                ("result.7 (a12) rel", 3e-14, true, false),
             ])));
         let g = Arc::new(Mutex::new(Geodesic::wgs84()));
         geodtest_basic(|line_num, vals| {
@@ -2714,8 +2723,11 @@ mod tests {
             entries[1].add(lon2, lon2_out, line_num);
             entries[2].add(azi2, azi2_out, line_num);
             entries[3].add(m12, m12_out, line_num);
-            entries[4].add(S12, S12_out, line_num);
-            entries[5].add(a12, a12_out, line_num);
+            entries[4].add(m12, m12_out, line_num);
+            entries[5].add(S12, S12_out, line_num);
+            entries[6].add(S12, S12_out, line_num);
+            entries[7].add(a12, a12_out, line_num);
+            entries[8].add(a12, a12_out, line_num);
         });
         println!();
         delta_entries.lock().unwrap().iter().for_each(|entry| println!("{}", entry));
@@ -2728,12 +2740,16 @@ mod tests {
         // Line format: lat1 lon1 azi1 lat2 lon2 azi2 s12 a12 m12 S12
         let delta_entries = Arc::new(Mutex::new(DeltaEntry::new_vec(
             "test_geodtest_geodesic_direct12 ", &[
-                ("result.0 (s12)", 1e-13, true, false),
+                ("result.0 (s12) abs", 0.0, false, false),
+                ("result.0 (s12) rel", 1e-13, true, false),
                 ("result.1 (azi1)", 1e-7, false, false),
                 ("result.2 (azi2)", 1e-7, false , false),
-                ("result.3 (m12)", 1e-8, true, false),
-                ("result.4 (S12)", 1e-7, true, false),
-                ("result.5 (a12)", 2e-10, false, false),
+                ("result.3 (m12) abs", 0.0, false, false),
+                ("result.3 (m12) rel", 1e-8, true, false),
+                ("result.4 (S12) abs", 0.0, false, false),
+                ("result.4 (S12) rel", 1e-7, true, false),
+                ("result.5 (a12) abs", 2e-10, false, false),
+                ("result.5 (a12) rel", 0.0, true, false),
             ])));
         let g = Arc::new(Mutex::new(Geodesic::wgs84()));
         geodtest_basic(|line_num, &(lat1, lon1, azi1, lat2, lon2, azi2, s12, a12, m12, S12)| {
@@ -2743,17 +2759,21 @@ mod tests {
 
             let mut entries = delta_entries.lock().unwrap();
             entries[0].add(s12, s12_out, line_num);
-            entries[1].add(azi1, azi1_out, line_num);
-            entries[2].add(azi2, azi2_out, line_num);
-            entries[3].add(m12, m12_out, line_num);
+            entries[1].add(s12, s12_out, line_num);
+            entries[2].add(azi1, azi1_out, line_num);
+            entries[3].add(azi2, azi2_out, line_num);
+            entries[4].add(m12, m12_out, line_num);
+            entries[5].add(m12, m12_out, line_num);
             // Our area calculation differs significantly (~1e7) from the value in GeodTest.dat for
             // line 400001, BUT our value also perfectly matches the value returned by GeographicLib
             // (C++) 1.51. Here's the problem line, for reference:
             // 4.199535552987 0 90 -4.199535552987 179.398106343454992238 90 19970505.608097404994 180 0 
             if line_num != 400001 {
-                entries[4].add(S12, S12_out, line_num);
+                entries[6].add(S12, S12_out, line_num);
+                entries[7].add(S12, S12_out, line_num);
             }
-            entries[5].add(a12, a12_out, line_num);
+            entries[8].add(a12, a12_out, line_num);
+            entries[9].add(a12, a12_out, line_num);
         });
         println!();
         delta_entries.lock().unwrap().iter().for_each(|entry| println!("{}", entry));
@@ -2767,12 +2787,16 @@ mod tests {
         let delta_entries = Arc::new(Mutex::new(DeltaEntry::new_vec(
             "test_geodtest_geodesic_direct12 ", &[
                 // Note that names below refer to transformed values, after the reversal.
-                ("result.0 (s12)", 1e-13, true, false),
+                ("result.0 (s12) abs", 0.0, false, false),
+                ("result.0 (s12) rel", 1e-13, true, false),
                 ("result.1 (azi1)", 1e-7, false, false),
                 ("result.2 (azi2)", 1e-7, false , false),
-                ("result.3 (m12)", 1e-8, true, false),
-                ("result.4 (S12)", 1e-7, true, false),
-                ("result.5 (a12)", 2e-10, false, false),
+                ("result.3 (m12) abs", 0.0, false, false),
+                ("result.3 (m12) rel", 1e-8, true, false),
+                ("result.4 (S12) abs", 0.0, false, false),
+                ("result.4 (S12) rel", 1e-7, true, false),
+                ("result.5 (a12) abs", 2e-10, false, false),
+                ("result.5 (a12) rel", 0.0, true, false),
             ])));
         let g = Arc::new(Mutex::new(Geodesic::wgs84()));
         geodtest_basic(|line_num, vals| {
@@ -2784,11 +2808,15 @@ mod tests {
 
             let mut entries = delta_entries.lock().unwrap();
             entries[0].add(s12, s12_out, line_num);
-            entries[1].add(azi1, azi1_out, line_num);
-            entries[2].add(azi2, azi2_out, line_num);
-            entries[3].add(m12, m12_out, line_num);
-            entries[4].add(S12, S12_out, line_num);
-            entries[5].add(a12, a12_out, line_num);
+            entries[1].add(s12, s12_out, line_num);
+            entries[2].add(azi1, azi1_out, line_num);
+            entries[3].add(azi2, azi2_out, line_num);
+            entries[4].add(m12, m12_out, line_num);
+            entries[5].add(m12, m12_out, line_num);
+            entries[6].add(S12, S12_out, line_num);
+            entries[7].add(S12, S12_out, line_num);
+            entries[8].add(a12, a12_out, line_num);
+            entries[9].add(a12, a12_out, line_num);
         });
         println!();
         delta_entries.lock().unwrap().iter().for_each(|entry| println!("{}", entry));
@@ -3013,15 +3041,19 @@ mod tests {
         // Format: this-in[_a _f] lat1 lon1 azi1 arcmode s12_a12 outmask result=a12 lat2-out lon2-out azi2-out s12-out m12-out M12-out M21-out S12-out
         let delta_entries = Arc::new(Mutex::new(DeltaEntry::new_vec(
             "test_vs_cpp_geodesic_gen_direct ", &[
-                ("result (a12 or result.0)", 1e-15, true, false),
+                ("result (a12 or result.0) abs", 0.0, false, false),
+                ("result (a12 or result.0) rel", 1e-15, true, false),
                 ("lat2-out (result.1)", 1e-15, false, false),
                 ("lon2-out (result.2)", 1e-15, false , false),
                 ("azi2-out (result.3)", 1e-15, false, false),
-                ("s12-out (result.4)", 1e-15, true, false),
-                ("m12-out (result.5)", 1e-15, true, false),
+                ("s12-out (result.4) abs", 0.0, false, false),
+                ("s12-out (result.4) rel", 1e-15, true, false),
+                ("m12-out (result.5) abs", 0.0, false, false),
+                ("m12-out (result.5) rel", 1e-15, true, false),
                 ("M12-out (result.6)", 1e-15, false, false),
                 ("M21-out (result.7)", 1e-15, false, false),
-                ("S12-out (result.8)", 1e-15, true, false),
+                ("S12-out (result.8) abs", 0.0, false, false),
+                ("S12-out (result.8) rel", 1e-15, true, false),
             ])));
         test_basic("Geodesic_GenDirect", 17, |line_num, items| {
             let g = Geodesic::new(items[0], items[1]);
@@ -3030,27 +3062,31 @@ mod tests {
                 g._gen_direct(items[2], items[3], items[4], items[5] != 1e-13, items[6], outmask);
             let mut entries = delta_entries.lock().unwrap();
             entries[0].add(items[8], a12, line_num);
+            entries[1].add(items[8], a12, line_num);
             if outmask & caps::LATITUDE != 0 {
-                entries[1].add(items[9], lat2, line_num);
+                entries[2].add(items[9], lat2, line_num);
             }
             if outmask & caps::LONGITUDE != 0 {
-                entries[2].add(items[10], lon2, line_num);
+                entries[3].add(items[10], lon2, line_num);
             }
             if outmask & caps::AZIMUTH != 0 {
-                entries[3].add(items[11], azi2, line_num);
+                entries[4].add(items[11], azi2, line_num);
             }
             if outmask & caps::DISTANCE != 0 {
-                entries[4].add(items[12], s12, line_num);
+                entries[5].add(items[12], s12, line_num);
+                entries[6].add(items[12], s12, line_num);
             }
             if outmask & caps::REDUCEDLENGTH != 0 {
-                entries[5].add(items[13], m12, line_num);
+                entries[7].add(items[13], m12, line_num);
+                entries[8].add(items[13], m12, line_num);
             }
             if outmask & caps::GEODESICSCALE != 0 {
-                entries[6].add(items[14], M12, line_num);
-                entries[7].add(items[15], M21, line_num);
+                entries[9].add(items[14], M12, line_num);
+                entries[10].add(items[15], M21, line_num);
             }
             if outmask & caps::AREA != 0 {
-                entries[8].add(items[16], S12, line_num);
+                entries[11].add(items[16], S12, line_num);
+                entries[12].add(items[16], S12, line_num);
             }
         });
         println!();
@@ -3066,14 +3102,18 @@ mod tests {
         // Format: this-in[_a _f] lat1 lon1 lat2 lon2 outmask result=a12 s12-out azi1-out azi2-out m12-out M12-out M21-out S12-out
         let delta_entries = Arc::new(Mutex::new(DeltaEntry::new_vec(
             "test_vs_cpp_geodesic_gen_inverse_azi ", &[
-                ("result (a12 or result.0)", 3e-14, false, false),
-                ("s12-out (result.1)", 4e-16, true, false),
+                ("result (a12 or result.0) abs", 3e-14, false, false),
+                ("result (a12 or result.0) rel", 0.0, true, false),
+                ("s12-out (result.1) abs", 0.0, false, false),
+                ("s12-out (result.1) rel", 4e-16, true, false),
                 ("azi1-out (result.2)", 3e-10, false , false),
                 ("azi2-out (result.3)", 3e-10, false, false),
-                ("m12-out (result.4)", 1e-13, true, false),
+                ("m12-out (result.4) abs", 0.0, false, false),
+                ("m12-out (result.4) rel", 1e-13, true, false),
                 ("M12-out (result.5)", 1e-13, true, false),
                 ("M21-out (result.6)", 1e-13, true, false),
-                ("S12-out (result.7)", 2e-15, true, false),
+                ("S12-out (result.7) abs", 0.0, false, false),
+                ("S12-out (result.7) rel", 2e-15, true, false),
             ])));
         test_basic("Geodesic_GenInverse_out7", 15, |line_num, items| {
             let g = Geodesic::new(items[0], items[1]);
@@ -3081,22 +3121,26 @@ mod tests {
             let result = g._gen_inverse_azi(items[2], items[3], items[4], items[5], outmask);
             let mut entries = delta_entries.lock().unwrap();
             entries[0].add(items[7], result.0, line_num);
+            entries[1].add(items[7], result.0, line_num);
             if outmask & caps::DISTANCE != 0 {
-                entries[1].add(items[8], result.1, line_num);
+                entries[2].add(items[8], result.1, line_num);
+                entries[3].add(items[8], result.1, line_num);
             }
             if outmask & caps::AZIMUTH != 0 {
-                entries[2].add(items[9], result.2, line_num);
-                entries[3].add(items[10], result.3, line_num);
+                entries[4].add(items[9], result.2, line_num);
+                entries[5].add(items[10], result.3, line_num);
             }
             if outmask & caps::REDUCEDLENGTH != 0 {
-                entries[4].add(items[11], result.4, line_num);
+                entries[6].add(items[11], result.4, line_num);
+                entries[7].add(items[11], result.4, line_num);
             }
             if outmask & caps::GEODESICSCALE != 0 {
-                entries[5].add(items[12], result.5, line_num);
-                entries[6].add(items[13], result.6, line_num);
+                entries[8].add(items[12], result.5, line_num);
+                entries[9].add(items[13], result.6, line_num);
             }
             if outmask & caps::AREA != 0 {
-                entries[7].add(items[14], result.7, line_num);
+                entries[10].add(items[14], result.7, line_num);
+                entries[11].add(items[14], result.7, line_num);
             }
         });
         println!();
@@ -3110,16 +3154,20 @@ mod tests {
         // Format: this-in[_a _f] lat1 lon1 lat2 lon2 outmask result=a12 s12-out salp1-out calp1-out salp2-out calp2-out m12-out M12-out M21-out S12-out
         let delta_entries = Arc::new(Mutex::new(DeltaEntry::new_vec(
             "test_vs_cpp_geodesic_gen_inverse ", &[
-                ("result (a12 or result.0)", 3e-14, false, false),
-                ("s12-out (result.1)",   4e-16, true, false),
+                ("result (a12 or result.0) abs", 3e-14, false, false),
+                ("result (a12 or result.0) rel", 0.0, true, false),
+                ("s12-out (result.1) abs",   0.0, false, false),
+                ("s12-out (result.1) rel",   4e-16, true, false),
                 ("salp1-out (result.2)", 1e-14, false, false),
                 ("calp1-out (result.3)", 5e-12, false, false),
                 ("salp2-out (result.4)", 1e-14, false, false),
                 ("calp2-out (result.5)", 5e-12, false, false),
-                ("m12-out (result.6)",   3e-11, false, false),
+                ("m12-out (result.6) abs",   3e-11, false, false),
+                ("m12-out (result.6) rel",   0.0, true, false),
                 ("M12-out (result.7)",   2e-15, false, false),
                 ("M21-out (result.8)",   3e-15, false, false),
-                ("S12-out (result.9)",   2e-15, true, false),
+                ("S12-out (result.9) abs",   0.0, false, false),
+                ("S12-out (result.9) rel",   2e-15, true, false),
             ])));
         test_basic("Geodesic_GenInverse_out9", 17, |line_num, items| {
             let g = Geodesic::new(items[0], items[1]);
@@ -3127,22 +3175,26 @@ mod tests {
             let result = g._gen_inverse(items[2], items[3], items[4], items[5], outmask);
             let mut entries = delta_entries.lock().unwrap();
             entries[0].add(items[7], result.0, line_num);
+            entries[1].add(items[7], result.0, line_num);
             if outmask & caps::DISTANCE != 0 {
-                entries[1].add(items[8], result.1, line_num);
+                entries[2].add(items[8], result.1, line_num);
+                entries[3].add(items[8], result.1, line_num);
             }
-            entries[2].add(items[9], result.2, line_num);
-            entries[3].add(items[10], result.3, line_num);
-            entries[4].add(items[11], result.4, line_num);
-            entries[5].add(items[12], result.5, line_num);
+            entries[4].add(items[9], result.2, line_num);
+            entries[5].add(items[10], result.3, line_num);
+            entries[6].add(items[11], result.4, line_num);
+            entries[7].add(items[12], result.5, line_num);
             if outmask & caps::REDUCEDLENGTH != 0 {
-                entries[6].add(items[13], result.6, line_num);
+                entries[8].add(items[13], result.6, line_num);
+                entries[9].add(items[13], result.6, line_num);
             }
             if outmask & caps::GEODESICSCALE != 0 {
-                entries[7].add(items[14], result.7, line_num);
-                entries[8].add(items[15], result.8, line_num);
+                entries[10].add(items[14], result.7, line_num);
+                entries[11].add(items[15], result.8, line_num);
             }
             if outmask & caps::AREA != 0 {
-                entries[9].add(items[16], result.9, line_num);
+                entries[12].add(items[16], result.9, line_num);
+                entries[13].add(items[16], result.9, line_num);
             }
         });
         println!();

@@ -206,16 +206,14 @@ impl DeltaLineSummary {
 // among sets of comparable expected vs found values.
 pub struct DeltaEntry {
     pub name: String,
-    pub diff_abs: f64,
-    pub diff_rel: f64,
+    pub diff: f64,
     pub allow_diff: f64,
     pub allow_sign: bool,
     pub check_rel: bool,
     pub num_total: usize,
     pub num_diff_fail: usize,
     pub summary_diff: DeltaLineSummary,
-    pub summary_sign_only: DeltaLineSummary,
-    pub summary_sign_plus: DeltaLineSummary,
+    pub summary_sign: DeltaLineSummary,
     pub histo: DeltaHistogram,
 }
 
@@ -230,13 +228,11 @@ impl DeltaEntry {
             allow_diff: 0.0,
             allow_sign: false,
             check_rel: true,
-            diff_abs: 0.0,
-            diff_rel: 0.0,
+            diff: 0.0,
             num_total: 0,
             num_diff_fail: 0,
             summary_diff: DeltaLineSummary::new(),
-            summary_sign_only: DeltaLineSummary::new(),
-            summary_sign_plus: DeltaLineSummary::new(),
+            summary_sign: DeltaLineSummary::new(),
             histo: DeltaHistogram::new(),
         }
     }
@@ -252,19 +248,17 @@ impl DeltaEntry {
                 allow_diff: *allow_diff,
                 check_rel: *check_rel,
                 allow_sign: *allow_sign,
-                diff_abs: 0.0,
-                diff_rel: 0.0,
+                diff: 0.0,
                 num_total: 0,
                 num_diff_fail: 0,
                 summary_diff: DeltaLineSummary::new(),
-                summary_sign_only: DeltaLineSummary::new(),
-                summary_sign_plus: DeltaLineSummary::new(),
+                summary_sign: DeltaLineSummary::new(),
                 histo: DeltaHistogram::new(),
             }
         }).collect()
     }
 
-    // Given x and y, calculate their absolute difference, relative difference,
+    // Given x and y, calculate their difference
     // and sign change status, then check whether any of those values is the
     // worst seen so far for comparable operations. If it is, record the line
     // number and the new worst difference.
@@ -273,32 +267,23 @@ impl DeltaEntry {
     pub fn add(&mut self, x: f64, y: f64, line_num: usize) {
         self.num_total += 1;
         let (diff_abs, diff_rel) = util::calc_delta(x, y);
-        let diff_better = if self.check_rel && util::is_delta_worse(diff_abs, diff_rel) {
-            diff_rel
-        } else {
-            diff_abs
-        };
-        let is_diff_worst = util::is_delta_worse(diff_better, self.diff_abs) || 
-            (self.check_rel && util::is_delta_worse(diff_better, self.diff_rel));
+        let diff = if self.check_rel {diff_rel} else {diff_abs};
+        let is_diff_worst = util::is_delta_worse(diff, self.diff);
         // Funky negation on next line is intentional, to get desired nan behavior.
         if !(diff_abs == 0.0) {
             self.summary_diff.add(x, y, line_num, is_diff_worst);
             if is_diff_worst {
-                self.diff_abs = diff_abs;
-                self.diff_rel = diff_rel;
+                self.diff = diff;
             }
-            if !(diff_better <= self.allow_diff) {
+            if !(diff <= self.allow_diff) {
                 self.num_diff_fail += 1;
             }
         }
         // For the sign change check, allow (NAN vs NAN), but not (0.0 vs -0.0) or (NAN vs -NAN).
-        if x.is_sign_negative() == y.is_sign_negative() {
-        } else if diff_abs == 0.0 {
-            self.summary_sign_only.add(x, y, line_num, false);
-        } else {
-            self.summary_sign_plus.add(x, y, line_num, false);
+        if x.is_sign_negative() != y.is_sign_negative() {
+            self.summary_sign.add(x, y, line_num, false);
         }
-        self.histo.add(diff_better);
+        self.histo.add(diff);
     }
 
     pub fn assert(&self) {
@@ -307,11 +292,8 @@ impl DeltaEntry {
         } else {
             crate::assert_delta_abs!(self.summary_diff.x, self.summary_diff.y, self.allow_diff, true, self.name, self.summary_diff.line_num);
         }
-        if self.allow_sign {
-        } else if self.summary_sign_plus.count > 0 {
-            panic!("delta assert failed line {}: sign difference disallowed", self.summary_sign_plus.line_num);
-        } else if self.summary_sign_only.count > 0 {
-            panic!("delta assert failed line {}: zero vs negative zero sign difference disallowed", self.summary_sign_only.line_num);
+        if !self.allow_sign && self.summary_sign.count > 0 {
+            panic!("delta assert failed line {}: sign difference disallowed", self.summary_sign.line_num);
         }
     }
 }
@@ -320,16 +302,14 @@ impl Clone for DeltaEntry {
         fn clone(&self) -> Self {
             DeltaEntry {
                 name: self.name.clone(),
-                diff_abs: self.diff_abs,
-                diff_rel: self.diff_rel,
+                diff: self.diff,
                 allow_diff: self.allow_diff,
                 check_rel: self.check_rel,
                 allow_sign: self.allow_sign,
                 num_total: self.num_total,
                 num_diff_fail: self.num_diff_fail,
                 summary_diff: self.summary_diff.clone(),
-                summary_sign_only: self.summary_sign_only.clone(),
-                summary_sign_plus: self.summary_sign_plus.clone(),
+                summary_sign: self.summary_sign.clone(),
                 histo: self.histo.clone(),
             }
         }
@@ -342,33 +322,18 @@ impl Display for DeltaEntry {
             write!(f, "{}: no diffs requested", self.name)?;
         } else if self.summary_diff.count < 1 {
             write!(f, "{}: no non-zero diffs", self.name)?;
-        } else if self.check_rel {
-            write!(
-                f,
-                "{}: worst line {} {}{:e} vs {}{:e} abs {:e}, rel {:e}, {}/{} failed tolerance {:e}",
-                self.name,
-                self.summary_diff.line_num,
-                util::help_sign(self.summary_diff.x),
-                self.summary_diff.x,
-                util::help_sign(self.summary_diff.y),
-                self.summary_diff.y,
-                self.diff_abs,
-                self.diff_rel,
-                self.num_diff_fail,
-                self.num_total,
-                self.allow_diff,
-            )?;
         } else {
             write!(
                 f,
-                "{}: worst line {} {}{:e} vs {}{:e} abs {:e}, {}/{} failed tolerance {:e}",
+                "{}: worst line {} {}{:e} vs {}{:e} {} {:e}, {}/{} failed tolerance {:e}",
                 self.name,
                 self.summary_diff.line_num,
                 util::help_sign(self.summary_diff.x),
                 self.summary_diff.x,
                 util::help_sign(self.summary_diff.y),
                 self.summary_diff.y,
-                self.diff_abs,
+                if self.check_rel {"rel"} else {"abs"},
+                self.diff,
                 self.num_diff_fail,
                 self.num_total,
                 self.allow_diff,
@@ -376,9 +341,8 @@ impl Display for DeltaEntry {
         }
         write!(
             f,
-            ", {}+{} sign diffs, histo {}",
-            self.summary_sign_only.count,
-            self.summary_sign_plus.count,
+            ", {} sign diffs, histo {}",
+            self.summary_sign.count,
             self.histo,
         )?;
         Ok(())
