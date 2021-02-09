@@ -10,7 +10,7 @@ pub const WGS84_A: f64 = 6378137.0;
 // Evaluating this as 1000000000.0 / (298257223563f64) reduces the
 // round-off error by about 10%.  However, expressing the flattening as
 // 1/298.257223563 is well ingrained.
-pub const WGS84_F: f64 = 1.0 / ( (298257223563f64) / 1000000000.0 );
+pub const WGS84_F: f64 = 1.0 / ((298257223563f64) / 1000000000.0);
 
 #[derive(Debug, Copy, Clone)]
 pub struct Geodesic {
@@ -102,16 +102,15 @@ impl Geodesic {
         let _ep2 = _e2 / geomath::sq(_f1);
         let _n = f / (2.0 - f);
         let _b = a * _f1;
-        let _c2 = (geomath::sq(a) + geomath::sq(_b)
-            * (if _e2 == 0.0 {
-                1.0
-            } else {
-                geomath::eatanhe(
-                    1.0,
-                    (if f < 0.0 { -1.0 } else { 1.0 }) * _e2.abs().sqrt()
-                ) / _e2
-            }
-            )) / 2.0;
+        let _c2 = (geomath::sq(a)
+            + geomath::sq(_b)
+                * (if _e2 == 0.0 {
+                    1.0
+                } else {
+                    geomath::eatanhe(1.0, (if f < 0.0 { -1.0 } else { 1.0 }) * _e2.abs().sqrt())
+                        / _e2
+                }))
+            / 2.0;
         let _etol2 = 0.1 * tol2_ / (f.abs().max(0.001) * (1.0 - f / 2.0).min(1.0) / 2.0).sqrt();
 
         let mut _A3x: [f64; GEODESIC_ORDER as usize] = [0.0; GEODESIC_ORDER as usize];
@@ -336,8 +335,10 @@ impl Geodesic {
 
         if shortline && ssig12 < self._etol2 {
             salp2 = cbet1 * somg12;
-            calp2 = sbet12 - cbet1 * sbet2
-                * (if comg12 >= 0.0 {
+            calp2 = sbet12
+                - cbet1
+                    * sbet2
+                    * (if comg12 >= 0.0 {
                         geomath::sq(somg12) / (1.0 + comg12)
                     } else {
                         1.0 - comg12
@@ -815,7 +816,7 @@ impl Geodesic {
         }
         if outmask & caps::AREA != 0 {
             let salp0 = salp1 * cbet1;
-            let calp0 = calp1.hypot(salp1 * sbet1); // calp0 > 0
+            let calp0 = calp1.hypot(salp1 * sbet1);
             if calp0 != 0.0 && salp0 != 0.0 {
                 ssig1 = sbet1;
                 csig1 = calp1 * cbet1;
