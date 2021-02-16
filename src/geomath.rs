@@ -385,13 +385,14 @@ pub fn _C2f(eps: f64, c: &mut [f64], geodesic_order: i64) {
 
 #[cfg(test)]
 mod tests {
+    extern crate float_diff;
     extern crate utilities;
 
     use super::*;
-    use utilities::{assert_delta, util};
+    use utilities::{util};
     use utilities::util::test_basic;
-    use utilities::delta_entry::DeltaEntry;
     use std::sync::{Arc, Mutex};
+    use float_diff::{DiffSummary64, diff, log_assert_approx_eq};
 
     // Results for assertions in * tests are taken by running the python implementation
 
@@ -572,45 +573,70 @@ mod tests {
     #[ignore] // Fails current behavior. Relies on non-Karney outside files. Slow.
     fn test_vs_cpp_geomath_ang_diff() {
         // Line format: x y result=z e-out
+        let summaries = Arc::new(Mutex::new(DiffSummary64::new_vec(
+            5, &[
+                ("result=z (result.0)", 0.0, false, &diff::diff_abs),
+                ("e-out (result.1)"   , 0.0, false, &diff::diff_abs),
+            ])));
         test_basic("Math_AngDiff_x_y_e", 4, |line_num, items| {
             let result = ang_diff(items[0], items[1]);
-            assert_delta!(items[2], result.0, 0.0, false, "result (result.0)", line_num);
-            assert_delta!(items[3], result.1, 0.0, false, "e (result.1)", line_num);
+            let mut entries = summaries.lock().unwrap();
+            entries[0].add(items[2], result.0, line_num);
+            entries[1].add(items[3], result.1, line_num);
         });
+        println!();
+        summaries.lock().unwrap().iter().for_each(|entry| println!("{}", entry));
+        summaries.lock().unwrap().iter().for_each(|entry| entry.assert());
     }
 
     #[test]
     #[ignore] // Fails current behavior. Relies on non-Karney outside files. Slow.
     fn test_vs_cpp_geomath_ang_normalize() {
         // Line format: x result
+        let summaries = Arc::new(Mutex::new(DiffSummary64::new_vec(
+            5, &[
+                ("result", 0.0, false, &diff::diff_abs),
+            ])));
         test_basic("Math_AngNormalize", 2, |line_num, items| {
             let result = ang_normalize(items[0]);
-            assert_delta!(items[1], result, 0.0, false, "result", line_num);
+            let mut entries = summaries.lock().unwrap();
+            entries[0].add(items[1], result, line_num);
         });
+        println!();
+        summaries.lock().unwrap().iter().for_each(|entry| println!("{}", entry));
+        summaries.lock().unwrap().iter().for_each(|entry| entry.assert());
     }
 
     #[test]
     #[ignore] // Relies on non-Karney outside files. Slow.
     fn test_vs_cpp_geomath_ang_round() {
         // Line format: x result
+        let summaries = Arc::new(Mutex::new(DiffSummary64::new_vec(
+            5, &[
+                ("result", 0.0, false, &diff::diff_abs),
+            ])));
         test_basic("Math_AngRound", 2, |line_num, items| {
             let result = ang_round(items[0]);
-            assert_delta!(items[1], result, 0.0, false, "result", line_num);
+            let mut entries = summaries.lock().unwrap();
+            entries[0].add(items[1], result, line_num);
         });
+        println!();
+        summaries.lock().unwrap().iter().for_each(|entry| println!("{}", entry));
+        summaries.lock().unwrap().iter().for_each(|entry| entry.assert());
     }
 
     #[test]
     #[ignore] // Relies on non-Karney outside files. Slow.
     fn test_vs_cpp_geomath_atan2d() {
         // Line format: y x result
-        let delta_entries = Arc::new(Mutex::new(DeltaEntry::new_vec(
-            "test_vs_cpp_geomath_atan2d ", &[
+        let summaries = Arc::new(Mutex::new(DiffSummary64::new_vec(
+            5, &[
                 // todo: this is a prime candidate for an ULP/step tolerance
-                ("result", 3e-14, false, false),
+                ("result", 3e-14, false, &diff::diff_abs),
             ])));
         test_basic("Math_atan2d", 3, |line_num, items| {
             let result = atan2d(items[0], items[1]);
-            let mut entries = delta_entries.lock().unwrap();
+            let mut entries = summaries.lock().unwrap();
             // For input of (-0, 1), the ideal result is +0, but C++ currently gets away with -0.
             // Ideally, we'd accept a value that is either positive 0,
             // or that matches the C++ result for this case.
@@ -619,8 +645,8 @@ mod tests {
             entries[0].add(items[2], result, line_num);
         });
         println!();
-        delta_entries.lock().unwrap().iter().for_each(|entry| println!("{}", entry));
-        delta_entries.lock().unwrap().iter().for_each(|entry| entry.assert());
+        summaries.lock().unwrap().iter().for_each(|entry| println!("{}", entry));
+        summaries.lock().unwrap().iter().for_each(|entry| entry.assert());
     }
 
     // Placeholder: Math_atand
@@ -630,9 +656,9 @@ mod tests {
     fn test_vs_cpp_geomath_consts() {
         // Line format: digits digits10 extra_digits bigendian pi degree GEOGRAPHICLIB_PRECISION GEOGRAPHICLIB_WORDS_BIGENDIAN
         let items = util::read_consts_basic("Math_consts", 8);
-        let line_num = 2;
-        assert_delta!(items[0], DIGITS as f64, 0.0, false, "DIGITS", line_num);
-        assert_delta!(items[4], std::f64::consts::PI, 0.0, false, "PI", line_num);
+        println!();
+        log_assert_approx_eq!("DIGITS", items[0], DIGITS as f64, 0.0, false, &diff::diff_abs);
+        log_assert_approx_eq!("PI", items[4], std::f64::consts::PI, 0.0, false, &diff::diff_abs);
     }
 
     // Placeholder: Math_cosd
@@ -641,47 +667,68 @@ mod tests {
     #[ignore] // Relies on non-Karney outside files. Slow.
     fn test_vs_cpp_geomath_eatanhe() {
         // Line format: x es result
-        let delta_entries = Arc::new(Mutex::new(DeltaEntry::new_vec(
-            "test_vs_cpp_geomath_eatanhe ", &[
-                ("result", 2e-18, false, false),
+        let summaries = Arc::new(Mutex::new(DiffSummary64::new_vec(
+            5, &[
+                ("result", 2e-18, false, &diff::diff_abs),
             ])));
         test_basic("Math_eatanhe", 3, |line_num, items| {
             let result = eatanhe(items[0], items[1]);
-            let mut entries = delta_entries.lock().unwrap();
+            let mut entries = summaries.lock().unwrap();
             entries[0].add(items[2], result, line_num);
         });
         println!();
-        delta_entries.lock().unwrap().iter().for_each(|entry| println!("{}", entry));
-        delta_entries.lock().unwrap().iter().for_each(|entry| entry.assert());
+        summaries.lock().unwrap().iter().for_each(|entry| println!("{}", entry));
+        summaries.lock().unwrap().iter().for_each(|entry| entry.assert());
     }
     
     #[test]
     #[ignore] // Relies on non-Karney outside files. Slow.
     fn test_vs_cpp_geomath_lat_fix() {
         // Line format: x result
+        let summaries = Arc::new(Mutex::new(DiffSummary64::new_vec(
+            5, &[
+                ("result", 0.0, false, &diff::diff_abs),
+            ])));
         test_basic("Math_LatFix", 2, |line_num, items| {
             let result = lat_fix(items[0]);
-            assert_delta!(items[1], result, 0.0, false, "result", line_num);
+            let mut entries = summaries.lock().unwrap();
+            entries[0].add(items[1], result, line_num);
         });
+        println!();
+        summaries.lock().unwrap().iter().for_each(|entry| println!("{}", entry));
+        summaries.lock().unwrap().iter().for_each(|entry| entry.assert());
     }
 
     #[test]
     #[ignore] // Relies on non-Karney outside files. Slow.
     fn test_vs_cpp_geomath_norm() {
         // Line format: x-in y-in x-out y-out
+        let summaries = Arc::new(Mutex::new(DiffSummary64::new_vec(
+            5, &[
+                ("x-out (result.0)", 0.0, false, &diff::diff_abs),
+                ("y-out (result.1)", 0.0, false, &diff::diff_abs),
+            ])));
         test_basic("Math_norm", 4, |line_num, items| {
             let mut x = items[0];
             let mut y = items[1];
             norm(&mut x, &mut y);
-            assert_delta!(items[2], x, 0.0, false, "x-out (result.0)", line_num);
-            assert_delta!(items[3], y, 0.0, false, "y-out (result.1)", line_num);
+            let mut entries = summaries.lock().unwrap();
+            entries[0].add(items[2], x, line_num);
+            entries[1].add(items[3], y, line_num);
         });
+        println!();
+        summaries.lock().unwrap().iter().for_each(|entry| println!("{}", entry));
+        summaries.lock().unwrap().iter().for_each(|entry| entry.assert());
     }
 
     #[test]
     #[ignore] // Relies on non-Karney outside files. Slow.
     fn test_vs_cpp_geomath_polyval() {
         // Line format: N p(N+1) x result
+        let summaries = Arc::new(Mutex::new(DiffSummary64::new_vec(
+            5, &[
+                ("result", 0.0, false, &diff::diff_abs),
+            ])));
         test_basic("Math_polyval", -1, |line_num, items| {
             assert!(items.len() > 2, "Expected a minimum of 3 items per line. Line {} had {}.", line_num, items.len());
             let n = items[0] as isize;
@@ -692,28 +739,32 @@ mod tests {
             let x = items[arg_count-2];
             assert_eq!(p_len, p.len(), "Internal error: On line {}, tried to construct slice size {} but found {}", line_num, p_len, p.len());
             let result = polyval(n, p, x);
-            assert_delta!(items[arg_count - 1], result, 0.0, false, "result", line_num);
+            let mut entries = summaries.lock().unwrap();
+            entries[0].add(items[arg_count - 1], result, line_num);
         });
+        println!();
+        summaries.lock().unwrap().iter().for_each(|entry| println!("{}", entry));
+        summaries.lock().unwrap().iter().for_each(|entry| entry.assert());
     }
 
     #[test]
     #[ignore] // Fails current behavior. Relies on non-Karney outside files. Slow.
     fn test_vs_cpp_geomath_sincosd() {
         // Line format: x sinx-out cosx-out
-        let delta_entries = Arc::new(Mutex::new(DeltaEntry::new_vec(
-            "test_vs_cpp_geomath_sincosd ", &[
-                ("sinx-out (result.0)", 2e-16, false, false),
-                ("cosx-out (result.1)", 2e-16, false, false),
+        let summaries = Arc::new(Mutex::new(DiffSummary64::new_vec(
+            5, &[
+                ("sinx-out (result.0)", 2e-16, false, &diff::diff_abs),
+                ("cosx-out (result.1)", 2e-16, false, &diff::diff_abs),
             ])));
         test_basic("Math_sincosd", 3, |line_num, items| {
             let result = sincosd(items[0]);
-            let mut entries = delta_entries.lock().unwrap();
+            let mut entries = summaries.lock().unwrap();
             entries[0].add(items[1], result.0, line_num);
             entries[1].add(items[2], result.1, line_num);
         });
         println!();
-        delta_entries.lock().unwrap().iter().for_each(|entry| println!("{}", entry));
-        delta_entries.lock().unwrap().iter().for_each(|entry| entry.assert());
+        summaries.lock().unwrap().iter().for_each(|entry| println!("{}", entry));
+        summaries.lock().unwrap().iter().for_each(|entry| entry.assert());
     }
 
     // Placeholder: Math_sind
@@ -722,21 +773,38 @@ mod tests {
     #[ignore] // Relies on non-Karney outside files. Slow.
     fn test_vs_cpp_geomath_sq() {
         // Line format: x result
+        let summaries = Arc::new(Mutex::new(DiffSummary64::new_vec(
+            5, &[
+                ("result", 0.0, false, &diff::diff_abs),
+            ])));
         test_basic("Math_sq", 2, |line_num, items| {
             let result = sq(items[0]);
-            assert_delta!(items[1], result, 0.0, false, "result", line_num);
+            let mut entries = summaries.lock().unwrap();
+            entries[0].add(items[1], result, line_num);
         });
+        println!();
+        summaries.lock().unwrap().iter().for_each(|entry| println!("{}", entry));
+        summaries.lock().unwrap().iter().for_each(|entry| entry.assert());
     }
 
     #[test]
     #[ignore] // Relies on non-Karney outside files. Slow.
     fn test_vs_cpp_geomath_sum() {
         // Line format: u v result=s t-out
+        let summaries = Arc::new(Mutex::new(DiffSummary64::new_vec(
+            5, &[
+                ("result=s (result.0)", 0.0, false, &diff::diff_abs),
+                ("t-out (result.1)", 0.0, false, &diff::diff_abs),
+            ])));
         test_basic("Math_sum", 4, |line_num, items| {
             let result = sum(items[0], items[1]);
-            assert_delta!(items[2], result.0, 0.0, false, "result (result.0)", line_num);
-            assert_delta!(items[3], result.1, 0.0, false, "t-out (result.1)", line_num);
+            let mut entries = summaries.lock().unwrap();
+            entries[0].add(items[2], result.0, line_num);
+            entries[1].add(items[3], result.1, line_num);
         });
+        println!();
+        summaries.lock().unwrap().iter().for_each(|entry| println!("{}", entry));
+        summaries.lock().unwrap().iter().for_each(|entry| entry.assert());
     }
 
     // Placeholder: Math_swab
@@ -751,18 +819,18 @@ mod tests {
     fn test_vs_cpp_geomath_astroid() {
         // Line format: x y result
         // Note: In the geographiclib C++ library, this function is in Geodesic, but in Rust it's in geomath.
-        let delta_entries = Arc::new(Mutex::new(DeltaEntry::new_vec(
-            "test_vs_cpp_geomath_astroid ", &[
-                ("result", 5e-16, false, false),
+        let summaries = Arc::new(Mutex::new(DiffSummary64::new_vec(
+            5, &[
+                ("result", 5e-16, false, &diff::diff_abs),
             ])));
         test_basic("Geodesic_Astroid", 3, |line_num, items| {
             let result = astroid(items[0], items[1]);
-            let mut entries = delta_entries.lock().unwrap();
+            let mut entries = summaries.lock().unwrap();
             entries[0].add(items[2], result, line_num);
         });
         println!();
-        delta_entries.lock().unwrap().iter().for_each(|entry| println!("{}", entry));
-        delta_entries.lock().unwrap().iter().for_each(|entry| entry.assert());
+        summaries.lock().unwrap().iter().for_each(|entry| println!("{}", entry));
+        summaries.lock().unwrap().iter().for_each(|entry| entry.assert());
     }
 
     #[test]
@@ -770,18 +838,18 @@ mod tests {
     fn test_vs_cpp_geomath_a1m1f() {
         // Line format: eps result
         // Note: In the geographiclib C++ library, this function is in Geodesic, but in Rust it's in geomath.
-        let delta_entries = Arc::new(Mutex::new(DeltaEntry::new_vec(
-            "test_vs_cpp_geomath_a1m1f ", &[
-                ("result", 0.0, false, false),
+        let summaries = Arc::new(Mutex::new(DiffSummary64::new_vec(
+            5, &[
+                ("result", 0.0, false, &diff::diff_abs),
             ])));
         test_basic("Geodesic_A1m1f", 2, |line_num, items| {
             let result = _A1m1f(items[0], crate::geodesic::GEODESIC_ORDER);
-            let mut entries = delta_entries.lock().unwrap();
+            let mut entries = summaries.lock().unwrap();
             entries[0].add(items[1], result, line_num);
         });
         println!();
-        delta_entries.lock().unwrap().iter().for_each(|entry| println!("{}", entry));
-        delta_entries.lock().unwrap().iter().for_each(|entry| entry.assert());
+        summaries.lock().unwrap().iter().for_each(|entry| println!("{}", entry));
+        summaries.lock().unwrap().iter().for_each(|entry| entry.assert());
     }
 
     #[test]
@@ -789,18 +857,18 @@ mod tests {
     fn test_vs_cpp_geomath_a2m1f() {
         // Line format: eps result
         // Note: In the geographiclib C++ library, this function is in Geodesic, but in Rust it's in geomath.
-        let delta_entries = Arc::new(Mutex::new(DeltaEntry::new_vec(
-            "test_vs_cpp_geomath_a2m1f ", &[
-                ("result", 0.0, false, false),
+        let summaries = Arc::new(Mutex::new(DiffSummary64::new_vec(
+            5, &[
+                ("result", 0.0, false, &diff::diff_abs),
             ])));
         test_basic("Geodesic_A2m1f", 2, |line_num, items| {
             let result = _A2m1f(items[0], crate::geodesic::GEODESIC_ORDER);
-            let mut entries = delta_entries.lock().unwrap();
+            let mut entries = summaries.lock().unwrap();
             entries[0].add(items[1], result, line_num);
         });
         println!();
-        delta_entries.lock().unwrap().iter().for_each(|entry| println!("{}", entry));
-        delta_entries.lock().unwrap().iter().for_each(|entry| entry.assert());
+        summaries.lock().unwrap().iter().for_each(|entry| println!("{}", entry));
+        summaries.lock().unwrap().iter().for_each(|entry| entry.assert());
     }
 
     #[test]
@@ -808,21 +876,21 @@ mod tests {
     fn test_vs_cpp_geomath_c1f() {
         // Line format: eps c-out(nC1_+1)
         // Note: In the geographiclib C++ library, this function is in Geodesic, but in Rust it's in geomath.
-        let delta_entries = Arc::new(Mutex::new(DeltaEntry::new_vec(
-            "test_vs_cpp_geomath_c1f ", &[
-                ("c item", 0.0, false, false),
+        let summaries = Arc::new(Mutex::new(DiffSummary64::new_vec(
+            5, &[
+                ("c item", 0.0, false, &diff::diff_abs),
             ])));
         test_basic("Geodesic_C1f", crate::geodesic::GEODESIC_ORDER as isize + 2, |line_num, items| {
             let mut c = [0.0; crate::geodesic::GEODESIC_ORDER as usize + 1];
             _C1f(items[0], &mut c, crate::geodesic::GEODESIC_ORDER);
-            let mut entries = delta_entries.lock().unwrap();
+            let mut entries = summaries.lock().unwrap();
             for i in 0..c.len() {
                 entries[0].add(items[1 + i], c[i], line_num);
             }
         });
         println!();
-        delta_entries.lock().unwrap().iter().for_each(|entry| println!("{}", entry));
-        delta_entries.lock().unwrap().iter().for_each(|entry| entry.assert());
+        summaries.lock().unwrap().iter().for_each(|entry| println!("{}", entry));
+        summaries.lock().unwrap().iter().for_each(|entry| entry.assert());
     }
 
     #[test]
@@ -830,22 +898,22 @@ mod tests {
     fn test_vs_cpp_geomath_c1pf() {
         // Line format: eps c-out(nC1p_+1)
         // Note: In the geographiclib C++ library, this function is in Geodesic, but in Rust it's in geomath.
-        let delta_entries = Arc::new(Mutex::new(DeltaEntry::new_vec(
-            "test_vs_cpp_geomath_c1pf ", &[
-                ("c item", 0.0, false, false),
+        let summaries = Arc::new(Mutex::new(DiffSummary64::new_vec(
+            5, &[
+                ("c item", 0.0, false, &diff::diff_abs),
             ])));
         test_basic("Geodesic_C1pf", crate::geodesic::GEODESIC_ORDER as isize + 2, |line_num, items| {
             let mut c = [0.0; crate::geodesic::GEODESIC_ORDER as usize + 1];
             _C1pf(items[0], &mut c, crate::geodesic::GEODESIC_ORDER);
-            let mut entries = delta_entries.lock().unwrap();
+            let mut entries = summaries.lock().unwrap();
             // Element 0 of this array is unused, and not initialized in c++, so value is unpredictable
             for i in 1..c.len() {
                 entries[0].add(items[i + 1], c[i], line_num);
             }
         });
         println!();
-        delta_entries.lock().unwrap().iter().for_each(|entry| println!("{}", entry));
-        delta_entries.lock().unwrap().iter().for_each(|entry| entry.assert());
+        summaries.lock().unwrap().iter().for_each(|entry| println!("{}", entry));
+        summaries.lock().unwrap().iter().for_each(|entry| entry.assert());
     }
 
     #[test]
@@ -853,22 +921,22 @@ mod tests {
     fn test_vs_cpp_geomath_c2f() {
         // Line format: eps c-out(nC1p_+1)
         // Note: In the geographiclib C++ library, this function is in Geodesic, but in Rust it's in geomath.
-        let delta_entries = Arc::new(Mutex::new(DeltaEntry::new_vec(
-            "test_vs_cpp_geomath_c2f ", &[
-                ("c item", 0.0, false, false),
+        let summaries = Arc::new(Mutex::new(DiffSummary64::new_vec(
+            5, &[
+                ("c item", 0.0, false, &diff::diff_abs),
             ])));
         test_basic("Geodesic_C2f", crate::geodesic::GEODESIC_ORDER as isize + 2, |line_num, items| {
             let mut c = [0.0; crate::geodesic::GEODESIC_ORDER as usize + 1];
             _C2f(items[0], &mut c, crate::geodesic::GEODESIC_ORDER);
-            let mut entries = delta_entries.lock().unwrap();
+            let mut entries = summaries.lock().unwrap();
             // The first element isn't used, so isn't useful to compare.
             for i in 1..c.len() {
                 entries[0].add(items[1+i], c[i], line_num);
             }
         });
         println!();
-        delta_entries.lock().unwrap().iter().for_each(|entry| println!("{}", entry));
-        delta_entries.lock().unwrap().iter().for_each(|entry| entry.assert());
+        summaries.lock().unwrap().iter().for_each(|entry| println!("{}", entry));
+        summaries.lock().unwrap().iter().for_each(|entry| entry.assert());
     }
 
     #[test]
@@ -876,6 +944,10 @@ mod tests {
     fn test_vs_cpp_geomath_sin_cos_series() {
         // Line format: sinp sinx cosx n c(n+sinp) result
         // Note: In the geographiclib C++ library, this function is in Geodesic, but in Rust it's in geomath.
+        let summaries = Arc::new(Mutex::new(DiffSummary64::new_vec(
+            5, &[
+                ("result", 0.0, false, &diff::diff_abs),
+            ])));
         test_basic("Geodesic_SinCosSeries", -1, |line_num, items| {
             assert!(items.len() > 4, "Expected a minimum of 5 items per line. Line {} had {}.", line_num, items.len());
             let sinp = items[0] != 0f64;
@@ -889,8 +961,12 @@ mod tests {
             let c = &items[4..s+4];
             assert_eq!(s, c.len(), "Internal error: On line {}, tried to construct slice size {} but found {}", line_num, s, c.len());
             let result = sin_cos_series(sinp, items[1], items[2], c);
-            assert_delta!(items[arg_count - 1], result, 0.0, false, "result", line_num);
+            let mut entries = summaries.lock().unwrap();
+            entries[0].add(items[arg_count - 1], result, line_num);
         });
+        println!();
+        summaries.lock().unwrap().iter().for_each(|entry| println!("{}", entry));
+        summaries.lock().unwrap().iter().for_each(|entry| entry.assert());
     }
 
 }

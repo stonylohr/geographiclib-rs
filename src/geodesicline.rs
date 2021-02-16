@@ -392,14 +392,15 @@ impl GeodesicLine {
 
 #[cfg(test)]
 mod tests {
+    extern crate float_diff;
     extern crate utilities;
 
     use super::*;
     use geodesic::Geodesic;
     use std::sync::{Arc, Mutex};
-    use utilities::{log_assert_delta, util};
+    use utilities::{util};
     use utilities::util::test_basic;
-    use utilities::delta_entry::DeltaEntry;
+    use float_diff::{DiffSummary64, diff, log_assert_approx_eq};
 
     #[test]
     fn test_gen_position() {
@@ -523,28 +524,31 @@ mod tests {
     fn test_vs_cpp_geodesicline_consts() {
         // Format: nC1_ nC1p_ nC2_ nC3_ nC4_
         let items = util::read_consts_basic("GeodesicLine_consts", 5);
-        log_assert_delta("test_vs_cpp_geodesicline_consts", "nC1_", items[0], GEODESIC_ORDER as f64, 0.0, false);
-        log_assert_delta("test_vs_cpp_geodesicline_consts", "nC1p_", items[1], GEODESIC_ORDER as f64, 0.0, false);
-        log_assert_delta("test_vs_cpp_geodesicline_consts", "nC2_", items[2], GEODESIC_ORDER as f64, 0.0, false);
-        log_assert_delta("test_vs_cpp_geodesicline_consts", "nC3_", items[3], GEODESIC_ORDER as f64, 0.0, false);
-        log_assert_delta("test_vs_cpp_geodesicline_consts", "nC4_", items[4], GEODESIC_ORDER as f64, 0.0, false);
+        log_assert_approx_eq!("nC1_" , items[0], GEODESIC_ORDER as f64, 0.0, false, &diff::diff_abs);
+        log_assert_approx_eq!("nC1p_", items[1], GEODESIC_ORDER as f64, 0.0, false, &diff::diff_abs);
+        log_assert_approx_eq!("nC2_" , items[2], GEODESIC_ORDER as f64, 0.0, false, &diff::diff_abs);
+        log_assert_approx_eq!("nC3_" , items[3], GEODESIC_ORDER as f64, 0.0, false, &diff::diff_abs);
+        log_assert_approx_eq!("nC4_" , items[4], GEODESIC_ORDER as f64, 0.0, false, &diff::diff_abs);
     }
 
     #[test]
     #[ignore] // Relies on non-Karney outside files. Slow.
     fn test_vs_cpp_geodesicline_gen_position() {
         // Format: this-in[_a _f _lat1 _lon1 _azi1 _a13 _s13 _caps _salp0 _calp0 tiny_ _b _c2 _f1 _k2 _salp1 _calp1 _ssig1 _csig1 _dn1 _stau1 _ctau1 _somg1 _comg1 _A1m1 _A2m1 _A3c _B11 _B21 _B31 _A4 _B41 _C1a(nC1_+1) _C1pa(nC1p_+1) _C2a(nC2_+1) _C3a(nC3_) _C4a(nC4_)] arcmode s12_a12 outmask result=a12 lat2-out lon2-out azi2-out s12-out m12-out M12-out M21-out S12-out
-        let delta_entries = Arc::new(Mutex::new(DeltaEntry::new_vec(
-            "test_vs_cpp_geodesicline_gen_position ", &[
-                ("result (a12 or result.0)", 2e-13, false, false),
-                ("lat2-out (result.1)", 2e-14, false, false),
-                ("lon2-out (result.2)", 4e-9, false , false),
-                ("azi2-out (result.3)", 3e-14, false, false),
-                ("s12-out (result.4)", 0.0, true, false),
-                ("m12-out (result.5)", 0.0, true, false),
-                ("M12-out (result.6)", 0.0, true, false),
-                ("M21-out (result.7)", 0.0, true, false),
-                ("S12-out (result.8)", 0.0, true, false),
+        let summaries = Arc::new(Mutex::new(DiffSummary64::new_vec(
+            5, &[
+                ("result (a12 or result.0)", 2e-13, false, &diff::diff_abs),
+                ("lat2-out (result.1)"     , 2e-14, false, &diff::diff_abs),
+                ("lon2-out (result.2)"     , 4e-9 , false, &diff::diff_abs),
+                ("azi2-out (result.3)"     , 3e-14, false, &diff::diff_abs),
+                ("s12-out (result.4) abs"  , 0.0  , false, &diff::diff_abs),
+                ("s12-out (result.4) rel"  , 0.0  , false, &diff::diff_rel),
+                ("m12-out (result.5) abs"  , 0.0  , false, &diff::diff_abs),
+                ("m12-out (result.5) rel"  , 0.0  , false, &diff::diff_rel),
+                ("M12-out (result.6)"      , 0.0  , false, &diff::diff_abs),
+                ("M21-out (result.7)"      , 0.0  , false, &diff::diff_abs),
+                ("S12-out (result.8) abs"  , 0.0  , false, &diff::diff_abs),
+                ("S12-out (result.8) rel"  , 0.0  , false, &diff::diff_rel),
             ])));
         test_basic("GeodesicLine_GenPosition", 44 + 3 + 5 * GEODESIC_ORDER as isize, |line_num, items| {
             let g = Geodesic::new(items[0], items[1]);
@@ -554,7 +558,7 @@ mod tests {
             // 77 total items, 12 non-construction, so first non-construction is at 65
             let outmask = items[67] as u64;
             let result = line._gen_position(0.0 != items[65], items[66], outmask);
-            let mut entries = delta_entries.lock().unwrap();
+            let mut entries = summaries.lock().unwrap();
             entries[0].add(items[68], result.0, line_num);
             if outmask & caps::LATITUDE != 0 {
                 entries[1].add(items[69], result.1, line_num);
@@ -567,21 +571,24 @@ mod tests {
             }
             if outmask & caps::DISTANCE != 0 {
                 entries[4].add(items[72], result.4, line_num);
+                entries[5].add(items[72], result.4, line_num);
             }
             if outmask & caps::REDUCEDLENGTH != 0 {
-                entries[5].add(items[73], result.5, line_num);
+                entries[6].add(items[73], result.5, line_num);
+                entries[7].add(items[73], result.5, line_num);
             }
             if outmask & caps::GEODESICSCALE != 0 {
-                entries[6].add(items[74], result.6, line_num);
-                entries[7].add(items[75], result.7, line_num);
+                entries[8].add(items[74], result.6, line_num);
+                entries[9].add(items[75], result.7, line_num);
             }
             if outmask & caps::AREA != 0 {
-                entries[8].add(items[76], result.8, line_num);
+                entries[10].add(items[76], result.8, line_num);
+                entries[11].add(items[76], result.8, line_num);
             }
         });
         println!();
-        delta_entries.lock().unwrap().iter().for_each(|entry| println!("{}", entry));
-        delta_entries.lock().unwrap().iter().for_each(|entry| entry.assert());
+        summaries.lock().unwrap().iter().for_each(|entry| println!("{}", entry));
+        summaries.lock().unwrap().iter().for_each(|entry| entry.assert());
     }
 
     // placeholder: GeodesicLine_GenSetDistance
@@ -590,52 +597,52 @@ mod tests {
     #[ignore] // Relies on non-Karney outside files. Slow.
     fn test_vs_cpp_geodesicline_new_a() {
         // Format: g[_a _f] lat1 lon1 azi1 caps this-out[_a _f _lat1 _lon1 _azi1 _a13 _s13 _caps _salp0 _calp0 tiny_ _b _c2 _f1 _k2 _salp1 _calp1 _ssig1 _csig1 _dn1 _stau1 _ctau1 _somg1 _comg1 _A1m1 _A2m1 _A3c _B11 _B21 _B31 _A4 _B41 _C1a(nC1_+1) _C1pa(nC1p_+1) _C2a(nC2_+1) _C3a(nC3_) _C4a(nC4_)]
-        let delta_entries = Arc::new(Mutex::new(DeltaEntry::new_vec(
-            "test_vs_cpp_geodesicline_new_a ", &[
-                ("a", 0.0, false, false),
-                ("f", 0.0, false, false),
-                ("lat1", 0.0, false, false),
-                ("lon1", 0.0, false, false),
-                ("azi1", 0.0, false, false),
-                ("a13", 0.0, false, false),
-                ("s13", 0.0, false, false),
-                ("caps", 0.0, false, false),
-                ("salp0", 6e-17, false, false),
-                ("calp0", 2e-16, false, false),
-                ("tiny", 0.0, false, false),
-                ("b", 0.0, false, false),
-                ("c2", 0.0, false, false),
-                ("f1", 0.0, false, false),
-                ("k2", 2e-18, false, false),
-                ("salp1", 0.0, false, false),
-                ("calp1", 0.0, false, false),
-                ("ssig1", 2e-16, false, false),
-                ("csig1", 2e-16, false, false),
-                ("dn1", 0.0, false, false),
-                ("stau1", 0.0, false, false),
-                ("ctau1", 0.0, false, false),
-                ("somg1", 0.0, false, false),
-                ("comg1", 2e-16, false, false),
-                ("A1m1", 0.0, false, false),
-                ("A2m1", 0.0, false, false),
-                ("A3c", 0.0, false, false),
-                ("B11", 0.0, false, false),
-                ("B21", 0.0, false, false),
-                ("B31", 0.0, false, false),
-                ("A4", 0.0, false, false),
-                ("B41", 0.0, false, false),
-                ("C1a item", 0.0, false, false),
-                ("C1pa item", 0.0, false, false),
-                ("C2a item", 0.0, false, false),
-                ("C3a item", 0.0, false, false),
-                ("C4a item", 0.0, false, false),
+        let summaries = Arc::new(Mutex::new(DiffSummary64::new_vec(
+            5, &[
+                ("a"        , 0.0  , false, &diff::diff_abs),
+                ("f"        , 0.0  , false, &diff::diff_abs),
+                ("lat1"     , 0.0  , false, &diff::diff_abs),
+                ("lon1"     , 0.0  , false, &diff::diff_abs),
+                ("azi1"     , 0.0  , false, &diff::diff_abs),
+                ("a13"      , 0.0  , false, &diff::diff_abs),
+                ("s13"      , 0.0  , false, &diff::diff_abs),
+                ("caps"     , 0.0  , false, &diff::diff_abs),
+                ("salp0"    , 6e-17, false, &diff::diff_abs),
+                ("calp0"    , 2e-16, false, &diff::diff_abs),
+                ("tiny"     , 0.0  , false, &diff::diff_abs),
+                ("b"        , 0.0  , false, &diff::diff_abs),
+                ("c2"       , 0.0  , false, &diff::diff_abs),
+                ("f1"       , 0.0  , false, &diff::diff_abs),
+                ("k2"       , 2e-18, false, &diff::diff_abs),
+                ("salp1"    , 0.0  , false, &diff::diff_abs),
+                ("calp1"    , 0.0  , false, &diff::diff_abs),
+                ("ssig1"    , 2e-16, false, &diff::diff_abs),
+                ("csig1"    , 2e-16, false, &diff::diff_abs),
+                ("dn1"      , 0.0  , false, &diff::diff_abs),
+                ("stau1"    , 0.0  , false, &diff::diff_abs),
+                ("ctau1"    , 0.0  , false, &diff::diff_abs),
+                ("somg1"    , 0.0  , false, &diff::diff_abs),
+                ("comg1"    , 2e-16, false, &diff::diff_abs),
+                ("A1m1"     , 0.0  , false, &diff::diff_abs),
+                ("A2m1"     , 0.0  , false, &diff::diff_abs),
+                ("A3c"      , 0.0  , false, &diff::diff_abs),
+                ("B11"      , 0.0  , false, &diff::diff_abs),
+                ("B21"      , 0.0  , false, &diff::diff_abs),
+                ("B31"      , 0.0  , false, &diff::diff_abs),
+                ("A4"       , 0.0  , false, &diff::diff_abs),
+                ("B41"      , 0.0  , false, &diff::diff_abs),
+                ("C1a item" , 0.0  , false, &diff::diff_abs),
+                ("C1pa item", 0.0  , false, &diff::diff_abs),
+                ("C2a item" , 0.0  , false, &diff::diff_abs),
+                ("C3a item" , 0.0  , false, &diff::diff_abs),
+                ("C4a item" , 0.0  , false, &diff::diff_abs),
             ])));
         // 38 +... _C1a(nC1_+1) _C1pa(nC1p_+1) _C2a(nC2_+1) _C3a(nC3_) _C4a(nC4_)
         test_basic("GeodesicLine_GeodesicLine_5arg", 38 + 3 + 5 * (GEODESIC_ORDER as isize), |line_num, items| {
             let g = Geodesic::new(items[0], items[1]);
             let caps = items[5] as u64;
             let line = GeodesicLine::new(&g, items[2], items[3], items[4], Some(caps), None, None);
-            let mut entries = delta_entries.lock().unwrap();
+            let mut entries = summaries.lock().unwrap();
             entries[0].add(items[6], line.a, line_num);
             entries[1].add(items[7], line.f, line_num);
             entries[2].add(items[8], line.lat1, line_num);
@@ -709,53 +716,53 @@ mod tests {
             }
         });
         println!();
-        delta_entries.lock().unwrap().iter().for_each(|entry| println!("{}", entry));
-        delta_entries.lock().unwrap().iter().for_each(|entry| entry.assert());
+        summaries.lock().unwrap().iter().for_each(|entry| println!("{}", entry));
+        summaries.lock().unwrap().iter().for_each(|entry| entry.assert());
     }
 
     // #[test]
     // #[ignore] // Relies on non-Karney outside files. Slow.
     // fn test_vs_cpp_geodesicline_new_b() {
     //     // Format: g[_a _f] lat1 lon1 azi1 salp1 calp1 caps arcmode s13_a13 this-out[_a _f _lat1 _lon1 _azi1 _a13 _s13 _caps _salp0 _calp0 tiny_ _b _c2 _f1 _k2 _salp1 _calp1 _ssig1 _csig1 _dn1 _stau1 _ctau1 _somg1 _comg1 _A1m1 _A2m1 _A3c _B11 _B21 _B31 _A4 _B41 _C1a(nC1_+1) _C1pa(nC1p_+1) _C2a(nC2_+1) _C3a(nC3_) _C4a(nC4_)]
-    //     let delta_entries = Arc::new(Mutex::new(DeltaEntry::new_vec(
-    //         "test_vs_cpp_geodesicline_new_b ", &[
-    //             ("a", 0.0, false, false),
-    //             ("f", 0.0, false, false),
-    //             ("lat1", 0.0, false, false),
-    //             ("lon1", 0.0, false, false),
-    //             ("azi1", 0.0, false, false),
-    //             ("a13", 0.0, false, false),
-    //             ("s13", 0.0, false, false),
-    //             ("caps", 0.0, false, false),
-    //             ("salp0", 0.0, false, false),
-    //             ("calp0", 0.0, false, false),
-    //             ("tiny", 0.0, false, false),
-    //             ("b", 0.0, false, false),
-    //             ("c2", 0.0, false, false),
-    //             ("f1", 0.0, false, false),
-    //             ("k2", 0.0, false, false),
-    //             ("salp1", 0.0, false, false),
-    //             ("calp1", 0.0, false, false),
-    //             ("ssig1", 0.0, false, false),
-    //             ("csig1", 0.0, false, false),
-    //             ("dn1", 0.0, false, false),
-    //             ("stau1", 0.0, false, false),
-    //             ("ctau1", 0.0, false, false),
-    //             ("somg1", 0.0, false, false),
-    //             ("comg1", 0.0, false, false),
-    //             ("A1m1", 0.0, false, false),
-    //             ("A2m1", 0.0, false, false),
-    //             ("A3c", 0.0, false, false),
-    //             ("B11", 0.0, false, false),
-    //             ("B21", 0.0, false, false),
-    //             ("B31", 0.0, false, false),
-    //             ("A4", 0.0, false, false),
-    //             ("B41", 0.0, false, false),
-    //             ("C1a item", 0.0, false, false),
-    //             ("C1pa item", 0.0, false, false),
-    //             ("C2a item", 0.0, false, false),
-    //             ("C3a item", 0.0, false, false),
-    //             ("C4a item", 0.0, false, false),
+    //     let summaries = Arc::new(Mutex::new(DiffSummary64::new_vec(
+    //         5, &[
+    //             ("a"        , 0.0, false, &diff::diff_abs),
+    //             ("f"        , 0.0, false, &diff::diff_abs),
+    //             ("lat1"     , 0.0, false, &diff::diff_abs),
+    //             ("lon1"     , 0.0, false, &diff::diff_abs),
+    //             ("azi1"     , 0.0, false, &diff::diff_abs),
+    //             ("a13"      , 0.0, false, &diff::diff_abs),
+    //             ("s13"      , 0.0, false, &diff::diff_abs),
+    //             ("caps"     , 0.0, false, &diff::diff_abs),
+    //             ("salp0"    , 0.0, false, &diff::diff_abs),
+    //             ("calp0"    , 0.0, false, &diff::diff_abs),
+    //             ("tiny"     , 0.0, false, &diff::diff_abs),
+    //             ("b"        , 0.0, false, &diff::diff_abs),
+    //             ("c2"       , 0.0, false, &diff::diff_abs),
+    //             ("f1"       , 0.0, false, &diff::diff_abs),
+    //             ("k2"       , 0.0, false, &diff::diff_abs),
+    //             ("salp1"    , 0.0, false, &diff::diff_abs),
+    //             ("calp1"    , 0.0, false, &diff::diff_abs),
+    //             ("ssig1"    , 0.0, false, &diff::diff_abs),
+    //             ("csig1"    , 0.0, false, &diff::diff_abs),
+    //             ("dn1"      , 0.0, false, &diff::diff_abs),
+    //             ("stau1"    , 0.0, false, &diff::diff_abs),
+    //             ("ctau1"    , 0.0, false, &diff::diff_abs),
+    //             ("somg1"    , 0.0, false, &diff::diff_abs),
+    //             ("comg1"    , 0.0, false, &diff::diff_abs),
+    //             ("A1m1"     , 0.0, false, &diff::diff_abs),
+    //             ("A2m1"     , 0.0, false, &diff::diff_abs),
+    //             ("A3c"      , 0.0, false, &diff::diff_abs),
+    //             ("B11"      , 0.0, false, &diff::diff_abs),
+    //             ("B21"      , 0.0, false, &diff::diff_abs),
+    //             ("B31"      , 0.0, false, &diff::diff_abs),
+    //             ("A4"       , 0.0, false, &diff::diff_abs),
+    //             ("B41"      , 0.0, false, &diff::diff_abs),
+    //             ("C1a item" , 0.0, false, &diff::diff_abs),
+    //             ("C1pa item", 0.0, false, &diff::diff_abs),
+    //             ("C2a item" , 0.0, false, &diff::diff_abs),
+    //             ("C3a item" , 0.0, false, &diff::diff_abs),
+    //             ("C4a item" , 0.0, false, &diff::diff_abs),
     //         ])));
     //     // 42 +... _C1a(nC1_+1) _C1pa(nC1p_+1) _C2a(nC2_+1) _C3a(nC3_) _C4a(nC4_)
     //     test_basic("GeodesicLine_GeodesicLine_9arg", 42 + 3 + 5 * (GEODESIC_ORDER as isize), |line_num, items| {
@@ -763,7 +770,7 @@ mod tests {
     //         let caps = items[7] as u64;
     //         // todo: modify to pass arcmode and s12_a13, but we'll need changes to "new" or something
     //         let line = GeodesicLine::new(&g, items[2], items[3], items[4], Some(caps), Some(items[5]), Some(items[6]));
-    //         let mut entries = delta_entries.lock().unwrap();
+    //         let mut entries = summaries.lock().unwrap();
     //         entries[0].add(items[10], line.a, line_num);
     //         entries[1].add(items[11], line.f, line_num);
     //         entries[2].add(items[12], line.lat1, line_num);
@@ -829,8 +836,8 @@ mod tests {
     //         }
     //     });
     //     println!();
-    //     delta_entries.lock().unwrap().iter().for_each(|entry| println!("{}", entry));
-    //     delta_entries.lock().unwrap().iter().for_each(|entry| entry.assert());
+    //     summaries.lock().unwrap().iter().for_each(|entry| println!("{}", entry));
+    //     summaries.lock().unwrap().iter().for_each(|entry| entry.assert());
     // }
 
     // placeholder: GeodesicLine_LineInit

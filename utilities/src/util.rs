@@ -60,38 +60,6 @@ pub fn as_f64(s: &str) -> Result<f64, Box<dyn Error + Sync + Send>> {
     }
 }
 
-// Return the absolute difference between two values.
-// If both values are nan, consider the difference to be 0.
-pub fn calc_delta_abs(x: f64, y: f64) -> f64 {
-    if x.is_nan() && y.is_nan() {
-        return 0f64;
-    } else if x.is_infinite() && y.is_infinite() {
-        return if x.is_sign_negative() == y.is_sign_negative() { 0f64 } else { f64::INFINITY };
-    } else {
-        let diff_abs = (x - y).abs();
-        return diff_abs;
-    }
-}
-
-// Return the absolute and relative difference between two values, in that order.
-// If both values are nan, consider the difference to be 0.
-pub fn calc_delta(x: f64, y: f64) -> (f64, f64) {
-    let diff_abs = calc_delta_abs(x, y);
-    let diff_rel = if diff_abs == 0.0 || diff_abs.is_nan() || diff_abs.is_infinite() {
-        diff_abs
-    } else {
-        2.0 * diff_abs / (x.abs() + y.abs())
-    };
-    (diff_abs, diff_rel)
-}
-
-// Return true if delta a is "worse" than delta b.
-// NAN is worse than INFINITY is worse than anything finite.
-// All deltas are assumed positive.
-pub fn is_delta_worse(a: f64, b: f64) -> bool {
-    (a.is_nan() && !b.is_nan()) || a > b
-}
-
 // Given an operation name, read the corresponding C++ instrumented data file.
 pub fn read_cppdat_file(op_name: &str) -> File {
     let path = get_data_path(op_name).expect("Failed to determine dat file path");

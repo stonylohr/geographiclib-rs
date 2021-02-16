@@ -1284,15 +1284,16 @@ impl InverseGeodesic<(f64, f64, f64, f64, f64, f64, f64, f64)> for Geodesic {
 
 #[cfg(test)]
 mod tests {
+    extern crate float_diff;
     extern crate utilities;
 
     use super::*;
     use assert_approx_eq::assert_approx_eq;
     use std::sync::{Arc, Mutex};
     use crate::geodesicline::GeodesicLine;
-    use utilities::{log_assert_delta, nC_, util};
+    use utilities::{nC_, util};
     use utilities::util::test_basic;
-    use utilities::delta_entry::DeltaEntry;
+    use float_diff::{DiffSummary64, diff, log_assert_approx_eq};
     
     const TESTCASES: &[(f64,f64,f64,f64,f64,f64,f64,f64,f64,f64,f64,f64)] = &[
         (
@@ -1646,16 +1647,16 @@ mod tests {
     fn test_arcdirect() {
         // Test arc direct
         // Corresponds with ArcDirectCheck from GeodesicTests.java
-        let mut entries = DeltaEntry::new_vec(
-            "test_arcdirect ", &[
-                ("lat2", 1e-13, false, false),
-                ("lon2", 1e-13, false, false),
-                ("azi2", 1e-13, false, false),
-                ("s12",  1e-8, false, false),
-                ("m12",  1e-8,  false, false),
-                ("M12",  1e-15, false, false),
-                ("M21",  1e-15, false, false),
-                ("S12",  1e-1,  false, false),
+        let mut entries = DiffSummary64::new_vec(
+            5, &[
+                ("lat2", 1e-13, false, &diff::diff_abs),
+                ("lon2", 1e-13, false, &diff::diff_abs),
+                ("azi2", 1e-13, false, &diff::diff_abs),
+                ("s12",  1e-8, false, &diff::diff_abs),
+                ("m12",  1e-8,  false, &diff::diff_abs),
+                ("M12",  1e-15, false, &diff::diff_abs),
+                ("M21",  1e-15, false, &diff::diff_abs),
+                ("S12",  1e-1,  false, &diff::diff_abs),
             ]);
         let geod = Geodesic::wgs84();
         for (line_num, (lat1, lon1, azi1, lat2, lon2, azi2, s12, a12, m12, M12, M21, S12)) in TESTCASES.iter().enumerate() {
@@ -2106,42 +2107,42 @@ mod tests {
     fn test_std_geodesic_geodsolve0() {
         let geod = Geodesic::wgs84();
         let (s12, azi1, azi2, _a12) = geod.inverse(40.6, -73.8, 49.01666667, 2.55);
-        log_assert_delta("test_std_geodesic_geodsolve0", "azi1", azi1, 53.47022, 0.5e-5, false);
-        log_assert_delta("test_std_geodesic_geodsolve0", "azi2", azi2, 111.59367, 0.5e-5, false);
-        log_assert_delta("test_std_geodesic_geodsolve0", "s12", s12, 5853226.0, 0.5, false);
+        log_assert_approx_eq!("azi1", azi1, 53.47022, 0.5e-5, false, &diff::diff_abs);
+        log_assert_approx_eq!("azi2", azi2, 111.59367, 0.5e-5, false, &diff::diff_abs);
+        log_assert_approx_eq!("s12", s12, 5853226.0, 0.5, false, &diff::diff_abs);
     }
 
     #[test]
     fn test_std_geodesic_geodsolve1() {
         let geod = Geodesic::wgs84();
         let (lat2, lon2, azi2) = geod.direct(40.63972222, -73.77888889, 53.5, 5850e3);
-        log_assert_delta("test_std_geodesic_geodsolve1", "lat2", lat2, 49.01467, 0.5e-5, false);
-        log_assert_delta("test_std_geodesic_geodsolve1", "lon2", lon2, 2.56106, 0.5e-5, false);
-        log_assert_delta("test_std_geodesic_geodsolve1", "azi2", azi2, 111.62947, 0.5e-5, false);
+        log_assert_approx_eq!("lat2", lat2, 49.01467, 0.5e-5, false, &diff::diff_abs);
+        log_assert_approx_eq!("lon2", lon2, 2.56106, 0.5e-5, false, &diff::diff_abs);
+        log_assert_approx_eq!("azi2", azi2, 111.62947, 0.5e-5, false, &diff::diff_abs);
     }
 
     #[test]
     fn test_std_geodesic_geodsolve2() {
         // Check fix for antipodal prolate bug found 2010-09-04
         let geod = Geodesic::new(6.4e6, -1f64/150.0);
-        let mut delta_entries = DeltaEntry::new_vec(
-            "test_std_geodesic_geodsolve2", &[
-                ("azi1", 0.5e-5, false, false),
-                ("azi2", 0.5e-5, false, false),
-                ("s12" , 0.5,    false, false),
+        let mut summaries = DiffSummary64::new_vec(
+            5, &[
+                ("azi1", 0.5e-5, false, &diff::diff_abs),
+                ("azi2", 0.5e-5, false, &diff::diff_abs),
+                ("s12" , 0.5,    false, &diff::diff_abs),
             ]);
         let (s12, azi1, azi2, _a12) = geod.inverse(0.07476, 0.0, -0.07476, 180.0);
-        delta_entries[0].add(90.00078  , azi1, 1);
-        delta_entries[1].add(90.00078  , azi2, 1);
-        delta_entries[2].add(20106193.0, s12 , 1);
+        summaries[0].add(90.00078  , azi1, 1);
+        summaries[1].add(90.00078  , azi2, 1);
+        summaries[2].add(20106193.0, s12 , 1);
         let (s12, azi1, azi2, _a12) = geod.inverse(0.1, 0.0, -0.1, 180.0);
-        delta_entries[0].add(90.00105  , azi1, 2);
-        delta_entries[1].add(90.00105  , azi2, 2);
-        delta_entries[2].add(20106193.0, s12 , 2);
+        summaries[0].add(90.00105  , azi1, 2);
+        summaries[1].add(90.00105  , azi2, 2);
+        summaries[2].add(20106193.0, s12 , 2);
     
         println!();
-        delta_entries.iter().for_each(|entry| println!("{}", entry));
-        delta_entries.iter().for_each(|entry| entry.assert());
+        summaries.iter().for_each(|entry| println!("{}", entry));
+        summaries.iter().for_each(|entry| entry.assert());
     }
 
     #[test]
@@ -2149,7 +2150,7 @@ mod tests {
         // Check fix for short line bug found 2010-05-21
         let geod = Geodesic::wgs84();
         let s12: f64 = geod.inverse(36.493349428792, 0.0, 36.49334942879201, 0.0000008);
-        log_assert_delta("test_std_geodesic_geodsolve4", "s12", s12, 0.072, 0.5e-3, false);
+        log_assert_approx_eq!("s12", s12, 0.072, 0.5e-3, false, &diff::diff_abs);
     }
 
     #[test]
@@ -2157,13 +2158,13 @@ mod tests {
         // Check fix for point2=pole bug found 2010-05-03
         let geod = Geodesic::wgs84();
         let (lat2, lon2, azi2) = geod.direct(0.01777745589997, 30.0, 0.0, 10e6);
-        log_assert_delta("test_std_geodesic_geodsolve5", "lat2", lat2, 90.0, 0.5e-5, false);
+        log_assert_approx_eq!("lat2", lat2, 90.0, 0.5e-5, false, &diff::diff_abs);
         if lon2 < 0.0 {
-            log_assert_delta("test_std_geodesic_geodsolve5", "lon2 a", lon2, -150.0, 0.5e-5, false);
-            log_assert_delta("test_std_geodesic_geodsolve5", "azi2.abs a", azi2.abs(), 180.0, 0.5e-5, false);
+            log_assert_approx_eq!("lon2 a", lon2, -150.0, 0.5e-5, false, &diff::diff_abs);
+            log_assert_approx_eq!("azi2.abs a", azi2.abs(), 180.0, 0.5e-5, false, &diff::diff_abs);
         } else {
-            log_assert_delta("test_std_geodesic_geodsolve5", "lon2 b", lon2, 30.0, 0.5e-5, false);
-            log_assert_delta("test_std_geodesic_geodsolve5", "azi2 b", azi2, 0.0, 0.5e-5, false);
+            log_assert_approx_eq!("lon2 b", lon2, 30.0, 0.5e-5, false, &diff::diff_abs);
+            log_assert_approx_eq!("azi2 b", azi2, 0.0, 0.5e-5, false, &diff::diff_abs);
         }
     }
 
@@ -2173,9 +2174,9 @@ mod tests {
         // x86 -O3).  Found again on 2012-03-27 with tdm-mingw32 (g++ 4.6.1).
         let geod = Geodesic::wgs84();
         let s12: f64 = geod.inverse(88.202499451857, 0.0, -88.202499451857, 179.981022032992859592);
-        log_assert_delta("test_std_geodesic_geodsolve6", "s12 a", s12, 20003898.214, 0.5e-3, false);
+        log_assert_approx_eq!("s12 a", s12, 20003898.214, 0.5e-3, false, &diff::diff_abs);
         let s12: f64 = geod.inverse(89.333123580033, 0.0, -89.333123580032997687, 179.99295812360148422);
-        log_assert_delta("test_std_geodesic_geodsolve6", "s12 b", s12, 20003926.881, 0.5e-3, false);
+        log_assert_approx_eq!("s12 b", s12, 20003926.881, 0.5e-3, false, &diff::diff_abs);
     }
 
     #[test]
@@ -2183,7 +2184,7 @@ mod tests {
         // Check fix for volatile x bug found 2011-06-25 (gcc 4.4.4 x86 -O3)
         let geod = Geodesic::wgs84();
         let s12: f64 = geod.inverse(56.320923501171, 0.0, -56.320923501171, 179.664747671772880215);
-        log_assert_delta("test_std_geodesic_geodsolve9", "s12", s12, 19993558.287, 0.5e-3, false);
+        log_assert_approx_eq!("s12", s12, 19993558.287, 0.5e-3, false, &diff::diff_abs);
     }
 
     #[test]
@@ -2192,7 +2193,7 @@ mod tests {
         // 10 rel + debug)
         let geod = Geodesic::wgs84();
         let s12: f64 = geod.inverse(52.784459512564, 0.0, -52.784459512563990912, 179.634407464943777557);
-        log_assert_delta("test_std_geodesic_geodsolve10", "s12", s12, 19991596.095, 0.5e-3, false);
+        log_assert_approx_eq!("s12", s12, 19991596.095, 0.5e-3, false, &diff::diff_abs);
     }
 
     #[test]
@@ -2201,7 +2202,7 @@ mod tests {
         // 10 rel + debug)
         let geod = Geodesic::wgs84();
         let s12: f64 = geod.inverse(48.522876735459, 0.0, -48.52287673545898293, 179.599720456223079643);
-        log_assert_delta("test_std_geodesic_geodsolve11", "s12", s12, 19989144.774, 0.5e-3, false);
+        log_assert_approx_eq!("s12", s12, 19989144.774, 0.5e-3, false, &diff::diff_abs);
     }
 
     #[test]
@@ -2211,9 +2212,9 @@ mod tests {
         // <stefan.gunther@embl.de>; fixed 2012-10-07
         let geod = Geodesic::new(89.8, -1.83);
         let (s12, azi1, azi2, _a12) = geod.inverse(0.0, 0.0, -10.0, 160.0);
-        log_assert_delta("test_std_geodesic_geodsolve12", "azi1", azi1, 120.27, 1e-2, false);
-        log_assert_delta("test_std_geodesic_geodsolve12", "azi2", azi2, 105.15, 1e-2, false);
-        log_assert_delta("test_std_geodesic_geodsolve12", "s12", s12, 266.7, 1e-1, false);
+        log_assert_approx_eq!("azi1", azi1, 120.27, 1e-2, false, &diff::diff_abs);
+        log_assert_approx_eq!("azi2", azi2, 105.15, 1e-2, false, &diff::diff_abs);
+        log_assert_approx_eq!("s12", s12, 266.7, 1e-1, false, &diff::diff_abs);
     }
 
     #[test]
@@ -2232,7 +2233,7 @@ mod tests {
         // checks that this is fixed.
         let geod = Geodesic::new(6.4e6, -1f64/150.0);
         let (_lat2, _lon2, _azi2, _m12, _M12, _M21, S12, _a12) = geod.direct(1.0, 2.0, 3.0, 4.0);
-        log_assert_delta("test_std_geodesic_geodsolve15", "S12", S12, 23700.0, 0.5, false);
+        log_assert_approx_eq!("S12", S12, 23700.0, 0.5, false, &diff::diff_abs);
     }
 
     #[test]
@@ -2241,28 +2242,28 @@ mod tests {
         let geod = Geodesic::new(6.4e6, -1f64/150.0);
         let (_a12, lat2, lon2, azi2, _s12, _m12, _M12, _M21, _S12) =
             geod._gen_direct(40.0, -75.0, -10.0, false, 2e7, caps::STANDARD | caps::LONG_UNROLL);
-        log_assert_delta("test_std_geodesic_geodsolve17", "lat2 a", lat2, -39.0, 1.0, false);
-        log_assert_delta("test_std_geodesic_geodsolve17", "lon2 a", lon2, -254.0, 1.0, false);
-        log_assert_delta("test_std_geodesic_geodsolve17", "azi2 a", azi2, -170.0, 1.0, false);
+        log_assert_approx_eq!("lat2 a", lat2, -39.0, 1.0, false, &diff::diff_abs);
+        log_assert_approx_eq!("lon2 a", lon2, -254.0, 1.0, false, &diff::diff_abs);
+        log_assert_approx_eq!("azi2 a", azi2, -170.0, 1.0, false, &diff::diff_abs);
 
         let line = GeodesicLine::new(&geod, 40.0, -75.0, -10.0, None, None, None);
         let (_a12, lat2, lon2, azi2, _s12, _m12, _M12, _M21, _S12) =
             line._gen_position(false, 2e7, caps::STANDARD | caps::LONG_UNROLL);
-        log_assert_delta("test_std_geodesic_geodsolve17", "lat2 b", lat2, -39.0, 1.0, false);
-        log_assert_delta("test_std_geodesic_geodsolve17", "lon2 b", lon2, -254.0, 1.0, false);
-        log_assert_delta("test_std_geodesic_geodsolve17", "azi2 b", azi2, -170.0, 1.0, false);
+        log_assert_approx_eq!("lat2 b", lat2, -39.0, 1.0, false, &diff::diff_abs);
+        log_assert_approx_eq!("lon2 b", lon2, -254.0, 1.0, false, &diff::diff_abs);
+        log_assert_approx_eq!("azi2 b", azi2, -170.0, 1.0, false, &diff::diff_abs);
 
         let (lat2, lon2, azi2) =
             geod.direct(40.0, -75.0, -10.0, 2e7);
-        log_assert_delta("test_std_geodesic_geodsolve17", "lat2 c", lat2, -39.0, 1.0, false);
-        log_assert_delta("test_std_geodesic_geodsolve17", "lon2 c", lon2, 105.0, 1.0, false);
-        log_assert_delta("test_std_geodesic_geodsolve17", "azi2 c", azi2, -170.0, 1.0, false);
+        log_assert_approx_eq!("lat2 c", lat2, -39.0, 1.0, false, &diff::diff_abs);
+        log_assert_approx_eq!("lon2 c", lon2, 105.0, 1.0, false, &diff::diff_abs);
+        log_assert_approx_eq!("azi2 c", azi2, -170.0, 1.0, false, &diff::diff_abs);
 
         let (_a12, lat2, lon2, azi2, _s12, _m12, _M12, _M21, _S12) =
             line._gen_position(false, 2e7, caps::STANDARD);
-        log_assert_delta("test_std_geodesic_geodsolve17", "lat2 d", lat2, -39.0, 1.0, false);
-        log_assert_delta("test_std_geodesic_geodsolve17", "lon2 d", lon2, 105.0, 1.0, false);
-        log_assert_delta("test_std_geodesic_geodsolve17", "azi2 d", azi2, -170.0, 1.0, false);
+        log_assert_approx_eq!("lat2 d", lat2, -39.0, 1.0, false, &diff::diff_abs);
+        log_assert_approx_eq!("lon2 d", lon2, 105.0, 1.0, false, &diff::diff_abs);
+        log_assert_approx_eq!("azi2 d", azi2, -170.0, 1.0, false, &diff::diff_abs);
     }
 
     #[test]
@@ -2271,7 +2272,7 @@ mod tests {
         let geod = Geodesic::new(6.4e6, 0.0);
         let (_a12, _s12, _salp1, _calp1, _salp2, _calp2, _m12, _M12, _M21, S12) =
             geod._gen_inverse(1.0, 2.0, 3.0, 4.0, caps::AREA);
-        log_assert_delta("test_std_geodesic_geodsolve26", "S12", S12, 49911046115.0, 0.5, false);
+        log_assert_approx_eq!("S12", S12, 49911046115.0, 0.5, false, &diff::diff_abs);
     }
 
     #[test]
@@ -2281,35 +2282,35 @@ mod tests {
         let geod = Geodesic::new(6.4e6, 0.1);
         let (a12, _lat2, _lon2, _azi2, _s12, _m12, _M12, _M21, _S12) =
             geod._gen_direct(1.0, 2.0, 10.0, false, 5e6, caps::STANDARD);
-        log_assert_delta("test_std_geodesic_geodsolve28", "a12", a12, 48.55570690, 0.5e-8, false);
+        log_assert_approx_eq!("a12", a12, 48.55570690, 0.5e-8, false, &diff::diff_abs);
     }
 
     #[test]
     fn test_std_geodesic_geodsolve29() {
         // Check longitude unrolling with inverse calculation 2015-09-16
         let geod = Geodesic::wgs84();
-        let mut delta_entries = DeltaEntry::new_vec(
-            "test_std_geodesic_geodsolve29", &[
-                ("s12" , 0.5  , false, false),
-                // ("lon1", 1e-10, false, false),
-                // ("lon2", 1e-10, false, false),
+        let mut summaries = DiffSummary64::new_vec(
+            5, &[
+                ("s12" , 0.5  , false, &diff::diff_abs),
+                // ("lon1", 1e-10, false, &diff::diff_abs),
+                // ("lon2", 1e-10, false, &diff::diff_abs),
             ]);
 
         let (_a12, s12, _salp1, _calp1, _salp2, _calp2, _m12, _M12, _M21, _S12) =
             geod._gen_inverse(0.0, 539.0, 0.0, 181.0, caps::STANDARD);
         // todo: This is also supposed to check adjusted longitudes. Review whether and how this is supported in geographiclib-rs.
-        delta_entries[0].add(222639.0, s12 , 1);
-        // delta_entries[1].add( 179.0  , lon1, 1);
-        // delta_entries[2].add(-179.0  , lon2, 1);
+        summaries[0].add(222639.0, s12 , 1);
+        // summaries[1].add( 179.0  , lon1, 1);
+        // summaries[2].add(-179.0  , lon2, 1);
         let (_a12, s12, _salp1, _calp1, _salp2, _calp2, _m12, _M12, _M21, _S12) =
             geod._gen_inverse(0.0, 539.0, 0.0, 181.0, caps::STANDARD | caps::LONG_UNROLL);
-        delta_entries[0].add(222639.0, s12 , 2);
-        // delta_entries[1].add(539.0  , lon1, 2);
-        // delta_entries[2].add(541.0  , lon2, 2);
+        summaries[0].add(222639.0, s12 , 2);
+        // summaries[1].add(539.0  , lon1, 2);
+        // summaries[2].add(541.0  , lon2, 2);
     
         println!();
-        delta_entries.iter().for_each(|entry| println!("{}", entry));
-        delta_entries.iter().for_each(|entry| entry.assert());
+        summaries.iter().for_each(|entry| println!("{}", entry));
+        summaries.iter().for_each(|entry| entry.assert());
     }
 
     #[test]
@@ -2319,53 +2320,53 @@ mod tests {
         // fmod(-0.0, 360.0) = +0.0.
         let geod = Geodesic::wgs84();
         let (s12, azi1, azi2, _a12) = geod.inverse(0.0, 0.0, 0.0, 179.0);
-        log_assert_delta("test_std_geodesic_geodsolve33", "azi1 a", azi1, 90.0, 0.5e-5, false);
-        log_assert_delta("test_std_geodesic_geodsolve33", "azi2 a", azi2, 90.0, 0.5e-5, false);
-        log_assert_delta("test_std_geodesic_geodsolve33", "s12 a", s12, 19926189.0, 0.5, false);
+        log_assert_approx_eq!("azi1 a", azi1, 90.0, 0.5e-5, false, &diff::diff_abs);
+        log_assert_approx_eq!("azi2 a", azi2, 90.0, 0.5e-5, false, &diff::diff_abs);
+        log_assert_approx_eq!("s12 a", s12, 19926189.0, 0.5, false, &diff::diff_abs);
         let (s12, azi1, azi2, _a12) = geod.inverse(0.0, 0.0, 0.0, 179.5);
-        log_assert_delta("test_std_geodesic_geodsolve33", "azi1 b", azi1, 55.96650, 0.5e-5, false);
-        log_assert_delta("test_std_geodesic_geodsolve33", "azi2 b", azi2, 124.03350, 0.5e-5, false);
-        log_assert_delta("test_std_geodesic_geodsolve33", "s12 b", s12, 19980862.0, 0.5, false);
+        log_assert_approx_eq!("azi1 b", azi1, 55.96650, 0.5e-5, false, &diff::diff_abs);
+        log_assert_approx_eq!("azi2 b", azi2, 124.03350, 0.5e-5, false, &diff::diff_abs);
+        log_assert_approx_eq!("s12 b", s12, 19980862.0, 0.5, false, &diff::diff_abs);
         let (s12, azi1, azi2, _a12) = geod.inverse(0.0, 0.0, 0.0, 180.0);
-        log_assert_delta("test_std_geodesic_geodsolve33", "azi1 c", azi1, 0.0, 0.5e-5, false);
-        log_assert_delta("test_std_geodesic_geodsolve33", "azi2 c", azi2.abs(), 180.0, 0.5e-5, false);
-        log_assert_delta("test_std_geodesic_geodsolve33", "s12 c", s12, 20003931.0, 0.5, false);
+        log_assert_approx_eq!("azi1 c", azi1, 0.0, 0.5e-5, false, &diff::diff_abs);
+        log_assert_approx_eq!("azi2 c", azi2.abs(), 180.0, 0.5e-5, false, &diff::diff_abs);
+        log_assert_approx_eq!("s12 c", s12, 20003931.0, 0.5, false, &diff::diff_abs);
         let (s12, azi1, azi2, _a12) = geod.inverse(0.0, 0.0, 1.0, 180.0);
-        log_assert_delta("test_std_geodesic_geodsolve33", "azi1 d", azi1, 0.0, 0.5e-5, false);
-        log_assert_delta("test_std_geodesic_geodsolve33", "azi2 d", azi2.abs(), 180.0, 0.5e-5, false);
-        log_assert_delta("test_std_geodesic_geodsolve33", "s12 d", s12, 19893357.0, 0.5, false);
+        log_assert_approx_eq!("azi1 d", azi1, 0.0, 0.5e-5, false, &diff::diff_abs);
+        log_assert_approx_eq!("azi2 d", azi2.abs(), 180.0, 0.5e-5, false, &diff::diff_abs);
+        log_assert_approx_eq!("s12 d", s12, 19893357.0, 0.5, false, &diff::diff_abs);
 
         let geod = Geodesic::new(6.4e6, 0.0);
         let (s12, azi1, azi2, _a12) = geod.inverse(0.0, 0.0, 0.0, 179.0);
-        log_assert_delta("test_std_geodesic_geodsolve33", "azi1 e", azi1, 90.0, 0.5e-5, false);
-        log_assert_delta("test_std_geodesic_geodsolve33", "azi2 e", azi2, 90.0, 0.5e-5, false);
-        log_assert_delta("test_std_geodesic_geodsolve33", "s12 e", s12, 19994492.0, 0.5, false);
+        log_assert_approx_eq!("azi1 e", azi1, 90.0, 0.5e-5, false, &diff::diff_abs);
+        log_assert_approx_eq!("azi2 e", azi2, 90.0, 0.5e-5, false, &diff::diff_abs);
+        log_assert_approx_eq!("s12 e", s12, 19994492.0, 0.5, false, &diff::diff_abs);
         let (s12, azi1, azi2, _a12) = geod.inverse(0.0, 0.0, 0.0, 180.0);
-        log_assert_delta("test_std_geodesic_geodsolve33", "azi1 f", azi1, 0.0, 0.5e-5, false);
-        log_assert_delta("test_std_geodesic_geodsolve33", "azi2 f", azi2.abs(), 180.0, 0.5e-5, false);
-        log_assert_delta("test_std_geodesic_geodsolve33", "s12 f", s12, 20106193.0, 0.5, false);
+        log_assert_approx_eq!("azi1 f", azi1, 0.0, 0.5e-5, false, &diff::diff_abs);
+        log_assert_approx_eq!("azi2 f", azi2.abs(), 180.0, 0.5e-5, false, &diff::diff_abs);
+        log_assert_approx_eq!("s12 f", s12, 20106193.0, 0.5, false, &diff::diff_abs);
         let (s12, azi1, azi2, _a12) = geod.inverse(0.0, 0.0, 1.0, 180.0);
-        log_assert_delta("test_std_geodesic_geodsolve33", "azi1 g", azi1, 0.0, 0.5e-5, false);
-        log_assert_delta("test_std_geodesic_geodsolve33", "azi2 g", azi2.abs(), 180.0, 0.5e-5, false);
-        log_assert_delta("test_std_geodesic_geodsolve33", "s12 g", s12, 19994492.0, 0.5, false);
+        log_assert_approx_eq!("azi1 g", azi1, 0.0, 0.5e-5, false, &diff::diff_abs);
+        log_assert_approx_eq!("azi2 g", azi2.abs(), 180.0, 0.5e-5, false, &diff::diff_abs);
+        log_assert_approx_eq!("s12 g", s12, 19994492.0, 0.5, false, &diff::diff_abs);
 
         let geod = Geodesic::new(6.4e6, -1.0/300.0);
         let (s12, azi1, azi2, _a12) = geod.inverse(0.0, 0.0, 0.0, 179.0);
-        log_assert_delta("test_std_geodesic_geodsolve33", "azi1 h", azi1, 90.0, 0.5e-5, false);
-        log_assert_delta("test_std_geodesic_geodsolve33", "azi2 h", azi2, 90.0, 0.5e-5, false);
-        log_assert_delta("test_std_geodesic_geodsolve33", "s12 h", s12, 19994492.0, 0.5, false);
+        log_assert_approx_eq!("azi1 h", azi1, 90.0, 0.5e-5, false, &diff::diff_abs);
+        log_assert_approx_eq!("azi2 h", azi2, 90.0, 0.5e-5, false, &diff::diff_abs);
+        log_assert_approx_eq!("s12 h", s12, 19994492.0, 0.5, false, &diff::diff_abs);
         let (s12, azi1, azi2, _a12) = geod.inverse(0.0, 0.0, 0.0, 180.0);
-        log_assert_delta("test_std_geodesic_geodsolve33", "azi1 i", azi1, 90.0, 0.5e-5, false);
-        log_assert_delta("test_std_geodesic_geodsolve33", "azi2 i", azi2, 90.0, 0.5e-5, false);
-        log_assert_delta("test_std_geodesic_geodsolve33", "s12 i", s12, 20106193.0, 0.5, false);
+        log_assert_approx_eq!("azi1 i", azi1, 90.0, 0.5e-5, false, &diff::diff_abs);
+        log_assert_approx_eq!("azi2 i", azi2, 90.0, 0.5e-5, false, &diff::diff_abs);
+        log_assert_approx_eq!("s12 i", s12, 20106193.0, 0.5, false, &diff::diff_abs);
         let (s12, azi1, azi2, _a12) = geod.inverse(0.0, 0.0, 0.5, 180.0);
-        log_assert_delta("test_std_geodesic_geodsolve33", "azi1 j", azi1, 33.02493, 0.5e-5, false);
-        log_assert_delta("test_std_geodesic_geodsolve33", "azi2 j", azi2, 146.97364, 0.5e-5, false);
-        log_assert_delta("test_std_geodesic_geodsolve33", "s12 j", s12, 20082617.0, 0.5, false);
+        log_assert_approx_eq!("azi1 j", azi1, 33.02493, 0.5e-5, false, &diff::diff_abs);
+        log_assert_approx_eq!("azi2 j", azi2, 146.97364, 0.5e-5, false, &diff::diff_abs);
+        log_assert_approx_eq!("s12 j", s12, 20082617.0, 0.5, false, &diff::diff_abs);
         let (s12, azi1, azi2, _a12) = geod.inverse(0.0, 0.0, 1.0, 180.0);
-        log_assert_delta("test_std_geodesic_geodsolve33", "azi1 k", azi1, 0.0, 0.5e-5, false);
-        log_assert_delta("test_std_geodesic_geodsolve33", "azi2 k", azi2.abs(), 180.0, 0.5e-5, false);
-        log_assert_delta("test_std_geodesic_geodsolve33", "s12 k", s12, 20027270.0, 0.5, false);
+        log_assert_approx_eq!("azi1 k", azi1, 0.0, 0.5e-5, false, &diff::diff_abs);
+        log_assert_approx_eq!("azi2 k", azi2.abs(), 180.0, 0.5e-5, false, &diff::diff_abs);
+        log_assert_approx_eq!("s12 k", s12, 20027270.0, 0.5, false, &diff::diff_abs);
     }
 
     #[test]
@@ -2388,9 +2389,9 @@ mod tests {
         // Check for points close with longitudes close to 180 deg apart.
         let geod = Geodesic::wgs84();
         let (s12, azi1, azi2, _a12) = geod.inverse(5.0, 0.00000000000001, 10.0, 180.0);
-        log_assert_delta("test_std_geodesic_geodsolve59", "azi1", azi1, 0.000000000000035, 1.5e-14, false);
-        log_assert_delta("test_std_geodesic_geodsolve59", "azi2", azi2, 179.99999999999996, 1.5e-14, false);
-        log_assert_delta("test_std_geodesic_geodsolve59", "s12", s12, 18345191.174332713, 5e-9, false);
+        log_assert_approx_eq!("azi1", azi1, 0.000000000000035, 1.5e-14, false, &diff::diff_abs);
+        log_assert_approx_eq!("azi2", azi2, 179.99999999999996, 1.5e-14, false, &diff::diff_abs);
+        log_assert_approx_eq!("s12", s12, 18345191.174332713, 5e-9, false, &diff::diff_abs);
     }
 
     #[test]
@@ -2399,15 +2400,15 @@ mod tests {
         let geod = Geodesic::wgs84();
         let (_a12, lat2, lon2, azi2, _s12, _m12, _M12, _M21, _S12) =
             geod._gen_direct(45.0, 0.0, -0.000000000000000003, false, 1e7, caps::STANDARD | caps::LONG_UNROLL);
-        log_assert_delta("test_std_geodesic_geodsolve61", "lat2 a", lat2, 45.30632, 0.5e-5, false);
-        log_assert_delta("test_std_geodesic_geodsolve61", "lon2 a", lon2, -180.0, 0.5e-5, false);
-        log_assert_delta("test_std_geodesic_geodsolve61", "azi2.abs a", azi2.abs(), 180.0, 0.5e-5, false);
+        log_assert_approx_eq!("lat2 a", lat2, 45.30632, 0.5e-5, false, &diff::diff_abs);
+        log_assert_approx_eq!("lon2 a", lon2, -180.0, 0.5e-5, false, &diff::diff_abs);
+        log_assert_approx_eq!("azi2.abs a", azi2.abs(), 180.0, 0.5e-5, false, &diff::diff_abs);
         // todo: review whether and how this is supported in geographiclib-rs
         // let line = geod.inverse_line(45, 0, 80, -0.000000000000000003);
         // let foo = line.position(1e7, caps::STANDARD | caps::LONG_UNROLL);
-        // log_assert_delta("test_std_geodesic_geodsolve61", "lat2  b", lat2, 45.30632, 0.5e-5, false);
-        // log_assert_delta("test_std_geodesic_geodsolve61", "lon2  b", lon2, -180, 0.5e-5, false);
-        // log_assert_delta("test_std_geodesic_geodsolve61", "azi2.abs b", azi2.abs(), 180, 0.5e-5, false);
+        // log_assert_approx_eq!("lat2  b", lat2, 45.30632, 0.5e-5, false, &diff::diff_abs);
+        // log_assert_approx_eq!("lon2  b", lon2, -180, 0.5e-5, false, &diff::diff_abs);
+        // log_assert_approx_eq!("azi2.abs b", azi2.abs(), 180, 0.5e-5, false, &diff::diff_abs);
     }
 
     // #[test]
@@ -2440,9 +2441,9 @@ mod tests {
         // (converting -0.0 to +0.0).
         let geod = Geodesic::wgs84();
         let (lat2, lon2, azi2) = geod.direct(90.0, 10.0, 180.0, -1e6);
-        log_assert_delta("test_std_geodesic_geodsolve73", "lat2", lat2, 81.04623, 0.5e-5, false);
-        log_assert_delta("test_std_geodesic_geodsolve73", "lon2", lon2, -170.0, 0.5e-5, false);
-        log_assert_delta("test_std_geodesic_geodsolve73", "azi2", azi2, 0.0, 0.5e-5, false);
+        log_assert_approx_eq!("lat2", lat2, 81.04623, 0.5e-5, false, &diff::diff_abs);
+        log_assert_approx_eq!("lon2", lon2, -170.0, 0.5e-5, false, &diff::diff_abs);
+        log_assert_approx_eq!("azi2", azi2, 0.0, 0.5e-5, false, &diff::diff_abs);
         assert!(azi2.is_sign_positive());
     }
 
@@ -2451,31 +2452,31 @@ mod tests {
         // Check fix for inaccurate areas, bug introduced in v1.46, fixed
         // 2015-10-16.
         let geod = Geodesic::wgs84();
-        let mut delta_entries = DeltaEntry::new_vec(
-            "test_std_geodesic_geodsolve74 ", &[
-                ("azi1", 5e-9, false, false),
-                ("azi2", 5e-9, false, false),
-                ("s12" , 5e-9, false, false),
-                ("a12" , 5e-9, false, false),
-                ("m12" , 5e-9, false, false),
-                ("M12" , 5e-9, false, false),
-                ("M21" , 5e-9, false, false),
-                ("S12" , 5e-4, false, false),
+        let mut summaries = DiffSummary64::new_vec(
+            5, &[
+                ("azi1", 5e-9, false, &diff::diff_abs),
+                ("azi2", 5e-9, false, &diff::diff_abs),
+                ("s12" , 5e-9, false, &diff::diff_abs),
+                ("a12" , 5e-9, false, &diff::diff_abs),
+                ("m12" , 5e-9, false, &diff::diff_abs),
+                ("M12" , 5e-9, false, &diff::diff_abs),
+                ("M21" , 5e-9, false, &diff::diff_abs),
+                ("S12" , 5e-4, false, &diff::diff_abs),
             ]);
         let (a12, s12, azi1, azi2, m12, M12, M21, S12) =
             geod._gen_inverse_azi(54.1589, 15.3872, 54.1591, 15.3877, caps::ALL);
-        delta_entries[0].add(55.723110355   , azi1, 1);
-        delta_entries[1].add(55.723515675   , azi2, 1);
-        delta_entries[2].add(39.527686385   , s12 , 1);
-        delta_entries[3].add( 0.000355495   , a12 , 1);
-        delta_entries[4].add(39.527686385   , m12 , 1);
-        delta_entries[5].add( 0.999999995   , M12 , 1);
-        delta_entries[6].add( 0.999999995   , M21 , 1);
-        delta_entries[7].add(286698586.30197, S12 , 1);
+        summaries[0].add(55.723110355   , azi1, 1);
+        summaries[1].add(55.723515675   , azi2, 1);
+        summaries[2].add(39.527686385   , s12 , 1);
+        summaries[3].add( 0.000355495   , a12 , 1);
+        summaries[4].add(39.527686385   , m12 , 1);
+        summaries[5].add( 0.999999995   , M12 , 1);
+        summaries[6].add( 0.999999995   , M21 , 1);
+        summaries[7].add(286698586.30197, S12 , 1);
     
         println!();
-        delta_entries.iter().for_each(|entry| println!("{}", entry));
-        delta_entries.iter().for_each(|entry| entry.assert());
+        summaries.iter().for_each(|entry| println!("{}", entry));
+        summaries.iter().for_each(|entry| entry.assert());
     }
 
     #[test]
@@ -2483,43 +2484,43 @@ mod tests {
         // The distance from Wellington and Salamanca (a classic failure of
         // Vincenty)
         let geod = Geodesic::wgs84();
-        let mut delta_entries = DeltaEntry::new_vec(
-            "test_std_geodesic_geodsolve76 ", &[
-                ("azi1", 0.5e-11, false, false),
-                ("azi2", 0.5e-11, false, false),
-                ("s12" , 0.5e-6 , false, false),
+        let mut summaries = DiffSummary64::new_vec(
+            5, &[
+                ("azi1", 0.5e-11, false, &diff::diff_abs),
+                ("azi2", 0.5e-11, false, &diff::diff_abs),
+                ("s12" , 0.5e-6 , false, &diff::diff_abs),
             ]);
         let (s12, azi1, azi2, _a12) = 
             geod.inverse(-(41.0+19.0/60.0), 174.0+49.0/60.0, 40.0+58.0/60.0, -(5.0+30.0/60.0));
-        delta_entries[0].add(160.39137649664, azi1, 1);
-        delta_entries[1].add( 19.50042925176, azi2, 1);
-        delta_entries[2].add(19960543.857179, s12, 1);
+        summaries[0].add(160.39137649664, azi1, 1);
+        summaries[1].add( 19.50042925176, azi2, 1);
+        summaries[2].add(19960543.857179, s12, 1);
 
         println!();
-        delta_entries.iter().for_each(|entry| println!("{}", entry));
-        delta_entries.iter().for_each(|entry| entry.assert());
+        summaries.iter().for_each(|entry| println!("{}", entry));
+        summaries.iter().for_each(|entry| entry.assert());
     }
 
     #[test]
     fn test_std_geodesic_geodsolve78() {
         // An example where the NGS calculator fails to converge
         let geod = Geodesic::wgs84();
-        let mut delta_entries = DeltaEntry::new_vec(
-            "test_std_geodesic_geodsolve78", &[
-                ("azi1", 0.5e-11, false, false),
-                ("azi2", 0.5e-11, false, false),
-                ("s12" , 0.5e-6 , false, false),
+        let mut summaries = DiffSummary64::new_vec(
+            5, &[
+                ("azi1", 0.5e-11, false, &diff::diff_abs),
+                ("azi2", 0.5e-11, false, &diff::diff_abs),
+                ("s12" , 0.5e-6 , false, &diff::diff_abs),
             ]);
 
         let (s12, azi1, azi2, _a12) = 
             geod.inverse(27.2, 0.0, -27.1, 179.5);
-        delta_entries[0].add( 45.82468716758, azi1, 1);
-        delta_entries[1].add(134.22776532670, azi2, 1);
-        delta_entries[2].add(19974354.765767, s12 , 1);
+        summaries[0].add( 45.82468716758, azi1, 1);
+        summaries[1].add(134.22776532670, azi2, 1);
+        summaries[2].add(19974354.765767, s12 , 1);
 
         println!();
-        delta_entries.iter().for_each(|entry| println!("{}", entry));
-        delta_entries.iter().for_each(|entry| entry.assert());
+        summaries.iter().for_each(|entry| println!("{}", entry));
+        summaries.iter().for_each(|entry| entry.assert());
     }
 
     #[test]
@@ -2529,35 +2530,35 @@ mod tests {
         let geod = Geodesic::wgs84();
         let (_a12, _s12, _salp1, _calp1, _salp2, _calp2, _m12, M12, M21, _S12) =
             geod._gen_inverse(0.0, 0.0, 0.0, 90.0, caps::GEODESICSCALE);
-        log_assert_delta("test_std_geodesic_geodsolve80", "M12 a", M12, -0.00528427534, 0.5e-10, false);
-        log_assert_delta("test_std_geodesic_geodsolve80", "M21 a", M21, -0.00528427534, 0.5e-10, false);
+        log_assert_approx_eq!("M12 a", M12, -0.00528427534, 0.5e-10, false, &diff::diff_abs);
+        log_assert_approx_eq!("M21 a", M21, -0.00528427534, 0.5e-10, false, &diff::diff_abs);
 
         let (_a12, _s12, _salp1, _calp1, _salp2, _calp2, _m12, M12, M21, _S12) =
             geod._gen_inverse(0.0, 0.0, 1e-6, 1e-6, caps::GEODESICSCALE);
-        log_assert_delta("test_std_geodesic_geodsolve80", "M12 b", M12, 1.0, 0.5e-10, false);
-        log_assert_delta("test_std_geodesic_geodsolve80", "M21 b", M21, 1.0, 0.5e-10, false);
+        log_assert_approx_eq!("M12 b", M12, 1.0, 0.5e-10, false, &diff::diff_abs);
+        log_assert_approx_eq!("M21 b", M21, 1.0, 0.5e-10, false, &diff::diff_abs);
 
         let (a12, s12, azi1, azi2, m12, M12, M21, S12) =
             geod._gen_inverse_azi(20.001, 0.0, 20.001, 0.0, caps::ALL);
-        log_assert_delta("test_std_geodesic_geodsolve80", "a12 c",  a12, 0.0, 1e-13, false);
-        log_assert_delta("test_std_geodesic_geodsolve80", "s12 c",  s12, 0.0, 1e-8, false);
-        log_assert_delta("test_std_geodesic_geodsolve80", "azi1 c", azi1, 180.0, 1e-13, false);
-        log_assert_delta("test_std_geodesic_geodsolve80", "azi2 c", azi2, 180.0, 1e-13, false);
-        log_assert_delta("test_std_geodesic_geodsolve80", "m12 c",  m12, 0.0,  1e-8, false);
-        log_assert_delta("test_std_geodesic_geodsolve80", "M12 c",  M12, 1.0, 1e-15, false);
-        log_assert_delta("test_std_geodesic_geodsolve80", "M21 c",  M21, 1.0, 1e-15, false);
-        log_assert_delta("test_std_geodesic_geodsolve80", "S12 c",  S12, 0.0, 1e-10, false);
+        log_assert_approx_eq!("a12 c",  a12, 0.0, 1e-13, false, &diff::diff_abs);
+        log_assert_approx_eq!("s12 c",  s12, 0.0, 1e-8, false, &diff::diff_abs);
+        log_assert_approx_eq!("azi1 c", azi1, 180.0, 1e-13, false, &diff::diff_abs);
+        log_assert_approx_eq!("azi2 c", azi2, 180.0, 1e-13, false, &diff::diff_abs);
+        log_assert_approx_eq!("m12 c",  m12, 0.0,  1e-8, false, &diff::diff_abs);
+        log_assert_approx_eq!("M12 c",  M12, 1.0, 1e-15, false, &diff::diff_abs);
+        log_assert_approx_eq!("M21 c",  M21, 1.0, 1e-15, false, &diff::diff_abs);
+        log_assert_approx_eq!("S12 c",  S12, 0.0, 1e-10, false, &diff::diff_abs);
 
         let (a12, s12, azi1, azi2, m12, M12, M21, S12) =
             geod._gen_inverse_azi(90.0, 0.0, 90.0, 180.0, caps::ALL);
-        log_assert_delta("test_std_geodesic_geodsolve80", "a12 d",  a12, 0.0, 1e-13, false);
-        log_assert_delta("test_std_geodesic_geodsolve80", "s12 d",  s12, 0.0, 1e-8, false);
-        log_assert_delta("test_std_geodesic_geodsolve80", "azi1 d", azi1, 0.0, 1e-13, false);
-        log_assert_delta("test_std_geodesic_geodsolve80", "azi2 d", azi2, 180.0, 1e-13, false);
-        log_assert_delta("test_std_geodesic_geodsolve80", "m12 d",  m12, 0.0, 1e-8, false);
-        log_assert_delta("test_std_geodesic_geodsolve80", "M12 d",  M12, 1.0, 1e-15, false);
-        log_assert_delta("test_std_geodesic_geodsolve80", "M21 d",  M21, 1.0, 1e-15, false);
-        log_assert_delta("test_std_geodesic_geodsolve80", "S12 d",  S12, 127516405431022.0, 0.5, false);
+        log_assert_approx_eq!("a12 d",  a12, 0.0, 1e-13, false, &diff::diff_abs);
+        log_assert_approx_eq!("s12 d",  s12, 0.0, 1e-8, false, &diff::diff_abs);
+        log_assert_approx_eq!("azi1 d", azi1, 0.0, 1e-13, false, &diff::diff_abs);
+        log_assert_approx_eq!("azi2 d", azi2, 180.0, 1e-13, false, &diff::diff_abs);
+        log_assert_approx_eq!("m12 d",  m12, 0.0, 1e-8, false, &diff::diff_abs);
+        log_assert_approx_eq!("M12 d",  M12, 1.0, 1e-15, false, &diff::diff_abs);
+        log_assert_approx_eq!("M21 d",  M21, 1.0, 1e-15, false, &diff::diff_abs);
+        log_assert_approx_eq!("S12 d",  S12, 127516405431022.0, 0.5, false, &diff::diff_abs);
 
         // An incapable line which can't take distance as input
         let line = GeodesicLine::new(&geod, 1.0, 2.0, 90.0, Some(caps::LATITUDE), None, None);
@@ -2659,17 +2660,17 @@ mod tests {
     #[ignore] // Fails existing behavior.
     fn test_geodtest_geodesic_direct12() {
         // Line format: lat1 lon1 azi1 lat2 lon2 azi2 s12 a12 m12 S12
-        let delta_entries = Arc::new(Mutex::new(DeltaEntry::new_vec(
-            "test_geodtest_geodesic_direct12 ", &[
-                ("result.0 (lat2)", 8e-14, false, false),
-                ("result.1 (lon2)", 2e-8, false, false),
-                ("result.2 (azi2)", 2e-8, false , false),
-                ("result.3 (m12) abs", 9e-9, false, false),
-                ("result.3 (m12) rel", 0.0, true, false),
-                ("result.6 (S12) abs", 0.0, false, false),
-                ("result.6 (S12) rel", 1e-7, true, false),
-                ("result.7 (a12) abs", 9e-14, false, false),
-                ("result.7 (a12) rel", 0.0, true, false),
+        let summaries = Arc::new(Mutex::new(DiffSummary64::new_vec(
+            5, &[
+                ("result.0 (lat2)"   , 8e-14, false, &diff::diff_abs),
+                ("result.1 (lon2)"   , 2e-8 , false, &diff::diff_abs),
+                ("result.2 (azi2)"   , 2e-8 , false, &diff::diff_abs),
+                ("result.3 (m12) abs", 9e-9 , false, &diff::diff_abs),
+                ("result.3 (m12) rel", 0.0  , false, &diff::diff_rel),
+                ("result.6 (S12) abs", 0.0  , false, &diff::diff_abs),
+                ("result.6 (S12) rel", 1e-7 , false, &diff::diff_rel),
+                ("result.7 (a12) abs", 9e-14, false, &diff::diff_abs),
+                ("result.7 (a12) rel", 0.0  , false, &diff::diff_rel),
             ])));
         let g = Arc::new(Mutex::new(Geodesic::wgs84()));
         geodtest_basic(|line_num, &(lat1, lon1, azi1, lat2, lon2, azi2, s12, a12, m12, S12)| {
@@ -2677,7 +2678,7 @@ mod tests {
             let (lat2_out, lon2_out, azi2_out, m12_out, _M12_out, _M21_out, S12_out, a12_out) =
                 g.direct(lat1, lon1, azi1, s12);
 
-            let mut entries = delta_entries.lock().unwrap();
+            let mut entries = summaries.lock().unwrap();
             entries[0].add(lat2, lat2_out, line_num);
             entries[1].add(lon2, lon2_out, line_num);
             entries[2].add(azi2, azi2_out, line_num);
@@ -2689,26 +2690,26 @@ mod tests {
             entries[8].add(a12, a12_out, line_num);
         });
         println!();
-        delta_entries.lock().unwrap().iter().for_each(|entry| println!("{}", entry));
-        delta_entries.lock().unwrap().iter().for_each(|entry| entry.assert());
+        summaries.lock().unwrap().iter().for_each(|entry| println!("{}", entry));
+        summaries.lock().unwrap().iter().for_each(|entry| entry.assert());
     }
 
     #[test]
     #[ignore] // Fails existing behavior. Not 100% sure of reversal function. Slow.
     fn test_geodtest_geodesic_direct21() {
         // Line format: lat1 lon1 azi1 lat2 lon2 azi2 s12 a12 m12 S12
-        let delta_entries = Arc::new(Mutex::new(DeltaEntry::new_vec(
-            "test_geodtest_geodesic_direct21 ", &[
+        let summaries = Arc::new(Mutex::new(DiffSummary64::new_vec(
+            5, &[
                 // Note that names below refer to transformed values, after the reversal.
-                ("result.0 (lat2)", 8e-14, false, false),
-                ("result.1 (lon2)", 1e-7, false, false),
-                ("result.2 (azi2)", 1e-7, false , false),
-                ("result.3 (m12) abs", 9e-9, false, false),
-                ("result.3 (m12) rel", 0.0, true, false),
-                ("result.6 (S12) abs", 0.0, false, false),
-                ("result.6 (S12) rel", 1e-7, true, false),
-                ("result.7 (a12) abs", 0.0, false, false),
-                ("result.7 (a12) rel", 3e-14, true, false),
+                ("result.0 (lat2)"   , 8e-14, false, &diff::diff_abs),
+                ("result.1 (lon2)"   , 1e-7 , false, &diff::diff_abs),
+                ("result.2 (azi2)"   , 1e-7 , false, &diff::diff_abs),
+                ("result.3 (m12) abs", 9e-9 , false, &diff::diff_abs),
+                ("result.3 (m12) rel", 0.0  , false, &diff::diff_rel),
+                ("result.6 (S12) abs", 0.0  , false, &diff::diff_abs),
+                ("result.6 (S12) rel", 1e-7 , false, &diff::diff_rel),
+                ("result.7 (a12) abs", 0.0  , false, &diff::diff_abs),
+                ("result.7 (a12) rel", 3e-14, false, &diff::diff_rel),
             ])));
         let g = Arc::new(Mutex::new(Geodesic::wgs84()));
         geodtest_basic(|line_num, vals| {
@@ -2718,7 +2719,7 @@ mod tests {
             let (lat2_out, lon2_out, azi2_out, m12_out, _M12_out, _M21_out, S12_out, a12_out) =
                 g.direct(lat1, lon1, azi1, s12);
 
-            let mut entries = delta_entries.lock().unwrap();
+            let mut entries = summaries.lock().unwrap();
             entries[0].add(lat2, lat2_out, line_num);
             entries[1].add(lon2, lon2_out, line_num);
             entries[2].add(azi2, azi2_out, line_num);
@@ -2730,26 +2731,26 @@ mod tests {
             entries[8].add(a12, a12_out, line_num);
         });
         println!();
-        delta_entries.lock().unwrap().iter().for_each(|entry| println!("{}", entry));
-        delta_entries.lock().unwrap().iter().for_each(|entry| entry.assert());
+        summaries.lock().unwrap().iter().for_each(|entry| println!("{}", entry));
+        summaries.lock().unwrap().iter().for_each(|entry| entry.assert());
     }
 
     #[test]
     #[ignore] // Fails existing behavior. Slow.
     fn test_geodtest_geodesic_inverse12() {
         // Line format: lat1 lon1 azi1 lat2 lon2 azi2 s12 a12 m12 S12
-        let delta_entries = Arc::new(Mutex::new(DeltaEntry::new_vec(
-            "test_geodtest_geodesic_direct12 ", &[
-                ("result.0 (s12) abs", 0.0, false, false),
-                ("result.0 (s12) rel", 1e-13, true, false),
-                ("result.1 (azi1)", 1e-7, false, false),
-                ("result.2 (azi2)", 1e-7, false , false),
-                ("result.3 (m12) abs", 0.0, false, false),
-                ("result.3 (m12) rel", 1e-8, true, false),
-                ("result.4 (S12) abs", 0.0, false, false),
-                ("result.4 (S12) rel", 1e-7, true, false),
-                ("result.5 (a12) abs", 2e-10, false, false),
-                ("result.5 (a12) rel", 0.0, true, false),
+        let summaries = Arc::new(Mutex::new(DiffSummary64::new_vec(
+            5, &[
+                ("result.0 (s12) abs", 0.0  , false, &diff::diff_abs),
+                ("result.0 (s12) rel", 1e-13, false, &diff::diff_rel),
+                ("result.1 (azi1)"   , 1e-7 , false, &diff::diff_abs),
+                ("result.2 (azi2)"   , 1e-7 , false, &diff::diff_abs),
+                ("result.3 (m12) abs", 0.0  , false, &diff::diff_abs),
+                ("result.3 (m12) rel", 1e-8 , false, &diff::diff_rel),
+                ("result.4 (S12) abs", 0.0  , false, &diff::diff_abs),
+                ("result.4 (S12) rel", 1e-7 , false, &diff::diff_rel),
+                ("result.5 (a12) abs", 2e-10, false, &diff::diff_abs),
+                ("result.5 (a12) rel", 0.0  , false, &diff::diff_rel),
             ])));
         let g = Arc::new(Mutex::new(Geodesic::wgs84()));
         geodtest_basic(|line_num, &(lat1, lon1, azi1, lat2, lon2, azi2, s12, a12, m12, S12)| {
@@ -2757,7 +2758,7 @@ mod tests {
             let (s12_out, azi1_out, azi2_out, m12_out, _M12_out, _M21_out, S12_out, a12_out) =
                 g.inverse(lat1, lon1, lat2, lon2);
 
-            let mut entries = delta_entries.lock().unwrap();
+            let mut entries = summaries.lock().unwrap();
             entries[0].add(s12, s12_out, line_num);
             entries[1].add(s12, s12_out, line_num);
             entries[2].add(azi1, azi1_out, line_num);
@@ -2776,27 +2777,27 @@ mod tests {
             entries[9].add(a12, a12_out, line_num);
         });
         println!();
-        delta_entries.lock().unwrap().iter().for_each(|entry| println!("{}", entry));
-        delta_entries.lock().unwrap().iter().for_each(|entry| entry.assert());
+        summaries.lock().unwrap().iter().for_each(|entry| println!("{}", entry));
+        summaries.lock().unwrap().iter().for_each(|entry| entry.assert());
     }
 
     #[test]
     #[ignore] // Fails existing behavior. Not 100% sure of reversal function. Slow.
     fn test_geodtest_geodesic_inverse21() {
         // Line format: lat1 lon1 azi1 lat2 lon2 azi2 s12 a12 m12 S12
-        let delta_entries = Arc::new(Mutex::new(DeltaEntry::new_vec(
-            "test_geodtest_geodesic_direct12 ", &[
+        let summaries = Arc::new(Mutex::new(DiffSummary64::new_vec(
+            5, &[
                 // Note that names below refer to transformed values, after the reversal.
-                ("result.0 (s12) abs", 0.0, false, false),
-                ("result.0 (s12) rel", 1e-13, true, false),
-                ("result.1 (azi1)", 1e-7, false, false),
-                ("result.2 (azi2)", 1e-7, false , false),
-                ("result.3 (m12) abs", 0.0, false, false),
-                ("result.3 (m12) rel", 1e-8, true, false),
-                ("result.4 (S12) abs", 0.0, false, false),
-                ("result.4 (S12) rel", 1e-7, true, false),
-                ("result.5 (a12) abs", 2e-10, false, false),
-                ("result.5 (a12) rel", 0.0, true, false),
+                ("result.0 (s12) abs", 0.0  , false, &diff::diff_abs),
+                ("result.0 (s12) rel", 1e-13, false, &diff::diff_rel),
+                ("result.1 (azi1)"   , 1e-7 , false, &diff::diff_abs),
+                ("result.2 (azi2)"   , 1e-7 , false, &diff::diff_abs),
+                ("result.3 (m12) abs", 0.0  , false, &diff::diff_abs),
+                ("result.3 (m12) rel", 1e-8 , false, &diff::diff_rel),
+                ("result.4 (S12) abs", 0.0  , false, &diff::diff_abs),
+                ("result.4 (S12) rel", 1e-7 , false, &diff::diff_rel),
+                ("result.5 (a12) abs", 2e-10, false, &diff::diff_abs),
+                ("result.5 (a12) rel", 0.0  , false, &diff::diff_rel),
             ])));
         let g = Arc::new(Mutex::new(Geodesic::wgs84()));
         geodtest_basic(|line_num, vals| {
@@ -2806,7 +2807,7 @@ mod tests {
             let (s12_out, azi1_out, azi2_out, m12_out, _M12_out, _M21_out, S12_out, a12_out) =
                 g.inverse(lat1, lon1, lat2, lon2);
 
-            let mut entries = delta_entries.lock().unwrap();
+            let mut entries = summaries.lock().unwrap();
             entries[0].add(s12, s12_out, line_num);
             entries[1].add(s12, s12_out, line_num);
             entries[2].add(azi1, azi1_out, line_num);
@@ -2819,8 +2820,8 @@ mod tests {
             entries[9].add(a12, a12_out, line_num);
         });
         println!();
-        delta_entries.lock().unwrap().iter().for_each(|entry| println!("{}", entry));
-        delta_entries.lock().unwrap().iter().for_each(|entry| entry.assert());
+        summaries.lock().unwrap().iter().for_each(|entry| println!("{}", entry));
+        summaries.lock().unwrap().iter().for_each(|entry| entry.assert());
     }
 
     // *_vs_cpp_* tests are based on instrumented inputs and outputs from C++.
@@ -2849,29 +2850,29 @@ mod tests {
     #[ignore] // Relies on non-Karney outside files. Slow.
     fn test_vs_cpp_geodesic_a3coeff() {
         // Line format: _n-in _A3x-out(nA3x_)
-        let delta_entries = Arc::new(Mutex::new(DeltaEntry::new_vec(
-            "test_vs_cpp_geodesic_a3coeff ", &[
-                ("_A3x item", 0.0, false, false),
+        let summaries = Arc::new(Mutex::new(DiffSummary64::new_vec(
+            5, &[
+                ("_A3x item", 0.0, false, &diff::diff_abs),
             ])));
         test_basic("Geodesic_A3coeff", 1 + GEODESIC_ORDER as isize, |line_num, items| {
             let result = _A3coeff(items[0]);
-            let mut entries = delta_entries.lock().unwrap();
+            let mut entries = summaries.lock().unwrap();
             for i in 0..result.len() {
                 entries[0].add(items[1 + i], result[i], line_num);
             }
         });
         println!();
-        delta_entries.lock().unwrap().iter().for_each(|entry| println!("{}", entry));
-        delta_entries.lock().unwrap().iter().for_each(|entry| entry.assert());
+        summaries.lock().unwrap().iter().for_each(|entry| println!("{}", entry));
+        summaries.lock().unwrap().iter().for_each(|entry| entry.assert());
     }
 
     #[test]
     #[ignore] // Relies on non-Karney outside files. Slow.
     fn test_vs_cpp_geodesic_a3f() {
         // Line format: _A3x(nA3x_) eps result
-        let delta_entries = Arc::new(Mutex::new(DeltaEntry::new_vec(
-            "test_vs_cpp_geodesic_a3f ", &[
-                ("result", 0.0, false, false),
+        let summaries = Arc::new(Mutex::new(DiffSummary64::new_vec(
+            5, &[
+                ("result", 0.0, false, &diff::diff_abs),
             ])));
         test_basic("Geodesic_A3f", 2 + GEODESIC_ORDER as isize, |line_num, items| {
             let mut g = Geodesic::wgs84(); // Fakey geodesic
@@ -2879,12 +2880,12 @@ mod tests {
                 g._A3x[i] = items[i];
             }
             let result = g._A3f(items[GEODESIC_ORDER as usize]);
-            let mut entries = delta_entries.lock().unwrap();
+            let mut entries = summaries.lock().unwrap();
             entries[0].add(items[GEODESIC_ORDER as usize + 1], result, line_num);
         });
         println!();
-        delta_entries.lock().unwrap().iter().for_each(|entry| println!("{}", entry));
-        delta_entries.lock().unwrap().iter().for_each(|entry| entry.assert());
+        summaries.lock().unwrap().iter().for_each(|entry| println!("{}", entry));
+        summaries.lock().unwrap().iter().for_each(|entry| entry.assert());
     }
 
     // Note: For Geodesic_Astroid, see geomath_tests.rs
@@ -2913,29 +2914,29 @@ mod tests {
     #[ignore] // Relies on non-Karney outside files. Slow.
     fn test_vs_cpp_geodesic_c3coeff() {
         // Line format: _n-in _C3x-out(nC3x_)
-        let delta_entries = Arc::new(Mutex::new(DeltaEntry::new_vec(
-            "test_vs_cpp_geodesic_c3coeff ", &[
-                ("_C3x item", 0.0, false, false),
+        let summaries = Arc::new(Mutex::new(DiffSummary64::new_vec(
+            5, &[
+                ("_C3x item", 0.0, false, &diff::diff_abs),
             ])));
         test_basic("Geodesic_C3coeff", 1 + nC3x_ as isize, |line_num, items| {
             let result = _C3coeff(items[0]);
-            let mut entries = delta_entries.lock().unwrap();
+            let mut entries = summaries.lock().unwrap();
             for i in 0..result.len() {
                 entries[0].add(items[1 + i], result[i], line_num);
             }
         });
         println!();
-        delta_entries.lock().unwrap().iter().for_each(|entry| println!("{}", entry));
-        delta_entries.lock().unwrap().iter().for_each(|entry| entry.assert());
+        summaries.lock().unwrap().iter().for_each(|entry| println!("{}", entry));
+        summaries.lock().unwrap().iter().for_each(|entry| entry.assert());
     }
 
     #[test]
     #[ignore] // Relies on non-Karney outside files. Slow.
     fn test_vs_cpp_geodesic_c3f() {
         // Line format: _C3x-in(nC3x_) eps c-out(nC3_)
-        let delta_entries = Arc::new(Mutex::new(DeltaEntry::new_vec(
-            "test_vs_cpp_geodesic_c3f ", &[
-                ("result", 0.0, false, false),
+        let summaries = Arc::new(Mutex::new(DiffSummary64::new_vec(
+            5, &[
+                ("result", 0.0, false, &diff::diff_abs),
             ])));
         test_basic("Geodesic_C3f", nC3x_ as isize + 1 + GEODESIC_ORDER as isize, |line_num, items| {
             let mut g = Geodesic::wgs84(); // Fakey geodesic
@@ -2944,15 +2945,15 @@ mod tests {
             }
             let mut c = [0.0; crate::geodesic::GEODESIC_ORDER as usize];
             g._C3f(items[nC3x_ as usize], &mut c);
-            let mut entries = delta_entries.lock().unwrap();
+            let mut entries = summaries.lock().unwrap();
             // The first element isn't used, and isn't initialized in C++.
             for i in 1..c.len() {
                 entries[0].add(items[nC3x_ as usize + 1 + i], c[i], line_num);
             }
         });
         println!();
-        delta_entries.lock().unwrap().iter().for_each(|entry| println!("{}", entry));
-        delta_entries.lock().unwrap().iter().for_each(|entry| entry.assert());
+        summaries.lock().unwrap().iter().for_each(|entry| println!("{}", entry));
+        summaries.lock().unwrap().iter().for_each(|entry| entry.assert());
     }
 
     // C4coeff doesn't get its own function in geographiclib-rs, so this work-around just duplicates the logic.
@@ -2976,29 +2977,29 @@ mod tests {
     #[ignore] // Relies on non-Karney outside files. Slow.
     fn test_vs_cpp_geodesic_c4coeff() {
         // Line format: _n-in _C4x-out(nC4x_)
-        let delta_entries = Arc::new(Mutex::new(DeltaEntry::new_vec(
-            "test_vs_cpp_geodesic_c4coeff ", &[
-                ("_C4x item", 0.0, false, false),
+        let summaries = Arc::new(Mutex::new(DiffSummary64::new_vec(
+            5, &[
+                ("_C4x item", 0.0, false, &diff::diff_abs),
             ])));
         test_basic("Geodesic_C4coeff", 1 + nC4x_ as isize, |line_num, items| {
             let result = _C4coeff(items[0]);
-            let mut entries = delta_entries.lock().unwrap();
+            let mut entries = summaries.lock().unwrap();
             for i in 0..result.len() {
                 entries[0].add(items[1 + i], result[i], line_num);
             }
         });
         println!();
-        delta_entries.lock().unwrap().iter().for_each(|entry| println!("{}", entry));
-        delta_entries.lock().unwrap().iter().for_each(|entry| entry.assert());
+        summaries.lock().unwrap().iter().for_each(|entry| println!("{}", entry));
+        summaries.lock().unwrap().iter().for_each(|entry| entry.assert());
     }
 
     #[test]
     #[ignore] // Relies on non-Karney outside files. Slow.
     fn test_vs_cpp_geodesic_c4f() {
         // Line format: _C4x-in(nC4x_) eps c-out(nC4_)
-        let delta_entries = Arc::new(Mutex::new(DeltaEntry::new_vec(
-            "test_vs_cpp_geodesic_c4f ", &[
-                ("result", 0.0, false, false),
+        let summaries = Arc::new(Mutex::new(DiffSummary64::new_vec(
+            5, &[
+                ("result", 0.0, false, &diff::diff_abs),
             ])));
         test_basic("Geodesic_C4f", nC4x_ as isize + 1 + GEODESIC_ORDER as isize, |line_num, items| {
             let mut g = Geodesic::wgs84(); // Fakey geodesic
@@ -3007,14 +3008,14 @@ mod tests {
             }
             let mut c = [0.0; crate::geodesic::GEODESIC_ORDER as usize];
             g._C4f(items[nC4x_ as usize], &mut c);
-            let mut entries = delta_entries.lock().unwrap();
+            let mut entries = summaries.lock().unwrap();
             for i in 0..c.len() {
                 entries[0].add(items[nC4x_ as usize + 1 + i], c[i], line_num);
             }
         });
         println!();
-        delta_entries.lock().unwrap().iter().for_each(|entry| println!("{}", entry));
-        delta_entries.lock().unwrap().iter().for_each(|entry| entry.assert());
+        summaries.lock().unwrap().iter().for_each(|entry| println!("{}", entry));
+        summaries.lock().unwrap().iter().for_each(|entry| entry.assert());
     }
 
     #[test]
@@ -3022,45 +3023,45 @@ mod tests {
     fn test_vs_cpp_geodesic_consts() {
         // Format: nA1_ nC1_ nC1p_ nA2_ nC2_ nA3_ nA3x_ nC3_ nC3x_ nC4_ nC4x_ nC_ maxit1_ GEOGRAPHICLIB_GEODESIC_ORDER
         let items = util::read_consts_basic("Geodesic_consts", 14);
-        log_assert_delta("test_vs_cpp_geodesic_consts", "nA3x_", items[6], GEODESIC_ORDER as f64, 0.0, false);
-        log_assert_delta("test_vs_cpp_geodesic_consts", "nC3x_", items[8], nC3x_ as f64, 0.0, false);
-        log_assert_delta("test_vs_cpp_geodesic_consts", "nC4x_", items[10], nC4x_ as f64, 0.0, false);
+        log_assert_approx_eq!("nA3x_", items[6], GEODESIC_ORDER as f64, 0.0, false, &diff::diff_abs);
+        log_assert_approx_eq!("nC3x_", items[8], nC3x_ as f64, 0.0, false, &diff::diff_abs);
+        log_assert_approx_eq!("nC4x_", items[10], nC4x_ as f64, 0.0, false, &diff::diff_abs);
 
         // rs code currently does not explicitly declare sizes for scratch areas, but probably should
-        // log_assert_delta("test_vs_cpp_geodesic_consts", "nC_", items[11], nC_, 1e-13, false);
+        // log_assert_approx_eq!("nC_", items[11], nC_, 1e-13, false, &diff::diff_abs);
 
         // maxit1_ is currently an instance variable in rs, despite being conceptually const
-        // log_assert_delta("test_vs_cpp_geodesic_consts", "maxit1_", items[12], maxit1_ as f64, 1e-13, false);
+        // log_assert_approx_eq!("maxit1_", items[12], maxit1_ as f64, 1e-13, false, &diff::diff_abs);
 
-        log_assert_delta("test_vs_cpp_geodesic_consts", "GEODESIC_ORDER", items[13], GEODESIC_ORDER as f64, 1e-13, false);
+        log_assert_approx_eq!("GEODESIC_ORDER", items[13], GEODESIC_ORDER as f64, 1e-13, false, &diff::diff_abs);
     }
 
     #[test]
     #[ignore] // Fails current behavior. Relies on non-Karney outside files. Slow.
     fn test_vs_cpp_geodesic_gen_direct() {
         // Format: this-in[_a _f] lat1 lon1 azi1 arcmode s12_a12 outmask result=a12 lat2-out lon2-out azi2-out s12-out m12-out M12-out M21-out S12-out
-        let delta_entries = Arc::new(Mutex::new(DeltaEntry::new_vec(
-            "test_vs_cpp_geodesic_gen_direct ", &[
-                ("result (a12 or result.0) abs", 0.0, false, false),
-                ("result (a12 or result.0) rel", 1e-15, true, false),
-                ("lat2-out (result.1)", 1e-15, false, false),
-                ("lon2-out (result.2)", 1e-15, false , false),
-                ("azi2-out (result.3)", 1e-15, false, false),
-                ("s12-out (result.4) abs", 0.0, false, false),
-                ("s12-out (result.4) rel", 1e-15, true, false),
-                ("m12-out (result.5) abs", 0.0, false, false),
-                ("m12-out (result.5) rel", 1e-15, true, false),
-                ("M12-out (result.6)", 1e-15, false, false),
-                ("M21-out (result.7)", 1e-15, false, false),
-                ("S12-out (result.8) abs", 0.0, false, false),
-                ("S12-out (result.8) rel", 1e-15, true, false),
+        let summaries = Arc::new(Mutex::new(DiffSummary64::new_vec(
+            5, &[
+                ("result (a12 or result.0) abs", 0.0  , false, &diff::diff_abs),
+                ("result (a12 or result.0) rel", 1e-15, false, &diff::diff_rel),
+                ("lat2-out (result.1)"         , 1e-15, false, &diff::diff_abs),
+                ("lon2-out (result.2)"         , 1e-15, false, &diff::diff_abs),
+                ("azi2-out (result.3)"         , 1e-15, false, &diff::diff_abs),
+                ("s12-out (result.4) abs"      , 0.0  , false, &diff::diff_abs),
+                ("s12-out (result.4) rel"      , 1e-15, false, &diff::diff_rel),
+                ("m12-out (result.5) abs"      , 0.0  , false, &diff::diff_abs),
+                ("m12-out (result.5) rel"      , 1e-15, false, &diff::diff_rel),
+                ("M12-out (result.6)"          , 1e-15, false, &diff::diff_abs),
+                ("M21-out (result.7)"          , 1e-15, false, &diff::diff_abs),
+                ("S12-out (result.8) abs"      , 0.0  , false, &diff::diff_abs),
+                ("S12-out (result.8) rel"      , 1e-15, false, &diff::diff_rel),
             ])));
         test_basic("Geodesic_GenDirect", 17, |line_num, items| {
             let g = Geodesic::new(items[0], items[1]);
             let outmask = items[7] as u64;
             let (a12, lat2, lon2, azi2, s12, m12, M12, M21, S12) =
                 g._gen_direct(items[2], items[3], items[4], items[5] != 1e-13, items[6], outmask);
-            let mut entries = delta_entries.lock().unwrap();
+            let mut entries = summaries.lock().unwrap();
             entries[0].add(items[8], a12, line_num);
             entries[1].add(items[8], a12, line_num);
             if outmask & caps::LATITUDE != 0 {
@@ -3090,8 +3091,8 @@ mod tests {
             }
         });
         println!();
-        delta_entries.lock().unwrap().iter().for_each(|entry| println!("{}", entry));
-        delta_entries.lock().unwrap().iter().for_each(|entry| entry.assert());
+        summaries.lock().unwrap().iter().for_each(|entry| println!("{}", entry));
+        summaries.lock().unwrap().iter().for_each(|entry| entry.assert());
     }
 
     // placeholder: Geodesic_GenDirectLine
@@ -3100,26 +3101,26 @@ mod tests {
     #[ignore] // Fails current behavior. Relies on non-Karney outside files. Slow.
     fn test_vs_cpp_geodesic_gen_inverse_azi() {
         // Format: this-in[_a _f] lat1 lon1 lat2 lon2 outmask result=a12 s12-out azi1-out azi2-out m12-out M12-out M21-out S12-out
-        let delta_entries = Arc::new(Mutex::new(DeltaEntry::new_vec(
-            "test_vs_cpp_geodesic_gen_inverse_azi ", &[
-                ("result (a12 or result.0) abs", 3e-14, false, false),
-                ("result (a12 or result.0) rel", 0.0, true, false),
-                ("s12-out (result.1) abs", 0.0, false, false),
-                ("s12-out (result.1) rel", 4e-16, true, false),
-                ("azi1-out (result.2)", 3e-10, false , false),
-                ("azi2-out (result.3)", 3e-10, false, false),
-                ("m12-out (result.4) abs", 0.0, false, false),
-                ("m12-out (result.4) rel", 1e-13, true, false),
-                ("M12-out (result.5)", 1e-13, true, false),
-                ("M21-out (result.6)", 1e-13, true, false),
-                ("S12-out (result.7) abs", 0.0, false, false),
-                ("S12-out (result.7) rel", 2e-15, true, false),
+        let summaries = Arc::new(Mutex::new(DiffSummary64::new_vec(
+            5, &[
+                ("result (a12 or result.0) abs", 3e-14, false, &diff::diff_abs),
+                ("result (a12 or result.0) rel", 0.0  , false, &diff::diff_rel),
+                ("s12-out (result.1) abs"      , 0.0  , false, &diff::diff_abs),
+                ("s12-out (result.1) rel"      , 4e-16, false, &diff::diff_rel),
+                ("azi1-out (result.2)"         , 3e-10, false, &diff::diff_abs),
+                ("azi2-out (result.3)"         , 3e-10, false, &diff::diff_abs),
+                ("m12-out (result.4) abs"      , 0.0  , false, &diff::diff_abs),
+                ("m12-out (result.4) rel"      , 1e-13, false, &diff::diff_rel),
+                ("M12-out (result.5)"          , 1e-13, false, &diff::diff_abs),
+                ("M21-out (result.6)"          , 1e-13, false, &diff::diff_abs),
+                ("S12-out (result.7) abs"      , 0.0  , false, &diff::diff_abs),
+                ("S12-out (result.7) rel"      , 2e-15, false, &diff::diff_rel),
             ])));
         test_basic("Geodesic_GenInverse_out7", 15, |line_num, items| {
             let g = Geodesic::new(items[0], items[1]);
             let outmask = items[6] as u64;
             let result = g._gen_inverse_azi(items[2], items[3], items[4], items[5], outmask);
-            let mut entries = delta_entries.lock().unwrap();
+            let mut entries = summaries.lock().unwrap();
             entries[0].add(items[7], result.0, line_num);
             entries[1].add(items[7], result.0, line_num);
             if outmask & caps::DISTANCE != 0 {
@@ -3144,36 +3145,36 @@ mod tests {
             }
         });
         println!();
-        delta_entries.lock().unwrap().iter().for_each(|entry| println!("{}", entry));
-        delta_entries.lock().unwrap().iter().for_each(|entry| entry.assert());
+        summaries.lock().unwrap().iter().for_each(|entry| println!("{}", entry));
+        summaries.lock().unwrap().iter().for_each(|entry| entry.assert());
     }
 
     #[test]
     #[ignore] // Fails current behavior. Relies on non-Karney outside files. Slow.
     fn test_vs_cpp_geodesic_gen_inverse() {
         // Format: this-in[_a _f] lat1 lon1 lat2 lon2 outmask result=a12 s12-out salp1-out calp1-out salp2-out calp2-out m12-out M12-out M21-out S12-out
-        let delta_entries = Arc::new(Mutex::new(DeltaEntry::new_vec(
-            "test_vs_cpp_geodesic_gen_inverse ", &[
-                ("result (a12 or result.0) abs", 3e-14, false, false),
-                ("result (a12 or result.0) rel", 0.0, true, false),
-                ("s12-out (result.1) abs",   0.0, false, false),
-                ("s12-out (result.1) rel",   4e-16, true, false),
-                ("salp1-out (result.2)", 1e-14, false, false),
-                ("calp1-out (result.3)", 5e-12, false, false),
-                ("salp2-out (result.4)", 1e-14, false, false),
-                ("calp2-out (result.5)", 5e-12, false, false),
-                ("m12-out (result.6) abs",   3e-11, false, false),
-                ("m12-out (result.6) rel",   0.0, true, false),
-                ("M12-out (result.7)",   2e-15, false, false),
-                ("M21-out (result.8)",   3e-15, false, false),
-                ("S12-out (result.9) abs",   0.0, false, false),
-                ("S12-out (result.9) rel",   2e-15, true, false),
+        let summaries = Arc::new(Mutex::new(DiffSummary64::new_vec(
+            5, &[
+                ("result (a12 or result.0) abs", 3e-14, false, &diff::diff_abs),
+                ("result (a12 or result.0) rel", 0.0  , false, &diff::diff_rel),
+                ("s12-out (result.1) abs"      , 0.0  , false, &diff::diff_abs),
+                ("s12-out (result.1) rel"      , 4e-16, false, &diff::diff_rel),
+                ("salp1-out (result.2)"        , 1e-14, false, &diff::diff_abs),
+                ("calp1-out (result.3)"        , 5e-12, false, &diff::diff_abs),
+                ("salp2-out (result.4)"        , 1e-14, false, &diff::diff_abs),
+                ("calp2-out (result.5)"        , 5e-12, false, &diff::diff_abs),
+                ("m12-out (result.6) abs"      , 3e-11, false, &diff::diff_abs),
+                ("m12-out (result.6) rel"      , 0.0  , false, &diff::diff_rel),
+                ("M12-out (result.7)"          , 2e-15, false, &diff::diff_abs),
+                ("M21-out (result.8)"          , 3e-15, false, &diff::diff_abs),
+                ("S12-out (result.9) abs"      , 0.0  , false, &diff::diff_abs),
+                ("S12-out (result.9) rel"      , 2e-15, false, &diff::diff_rel),
             ])));
         test_basic("Geodesic_GenInverse_out9", 17, |line_num, items| {
             let g = Geodesic::new(items[0], items[1]);
             let outmask = items[6] as u64;
             let result = g._gen_inverse(items[2], items[3], items[4], items[5], outmask);
-            let mut entries = delta_entries.lock().unwrap();
+            let mut entries = summaries.lock().unwrap();
             entries[0].add(items[7], result.0, line_num);
             entries[1].add(items[7], result.0, line_num);
             if outmask & caps::DISTANCE != 0 {
@@ -3198,8 +3199,8 @@ mod tests {
             }
         });
         println!();
-        delta_entries.lock().unwrap().iter().for_each(|entry| println!("{}", entry));
-        delta_entries.lock().unwrap().iter().for_each(|entry| entry.assert());
+        summaries.lock().unwrap().iter().for_each(|entry| println!("{}", entry));
+        summaries.lock().unwrap().iter().for_each(|entry| entry.assert());
     }
 
     #[test]
@@ -3222,32 +3223,32 @@ mod tests {
         let arg_count = 18 + nA3x_ + nC3x_ as usize + nC4x_ as usize;
 
         // Format: a f this-out[_a _f maxit2_ tiny_ tol0_ tol1_ tol2_ tolb_ xthresh_ _f1 _e2 _ep2 _n _b _c2 _etol2 _A3x(nA3x_) _C3x(nC3x_) _C4x(nC4x_)]
-        let delta_entries = Arc::new(Mutex::new(DeltaEntry::new_vec(
-            "test_vs_cpp_geodesic_new ", &[
-                ("maxit1_", 0.0, false, false),
-                ("a", 0.0, false, false),
-                ("f", 0.0, false, false),
-                ("maxit2_", 0.0, false, false),
-                ("tiny_", 0.0, false, false),
-                ("tol0_", 0.0, false, false),
-                ("tol1_", 0.0, false, false),
-                ("tol2_", 0.0, false, false),
-                ("tolb_", 0.0, false, false),
-                ("xthresh_", 0.0, false, false),
-                ("_f1", 0.0, false, false),
-                ("_e2", 0.0, false, false),
-                ("_ep2", 0.0, false, false),
-                ("_n", 0.0, false, false),
-                ("_b", 0.0, false, false),
-                ("_c2", 0.0, false, false),
-                ("_etol2", 0.0, false, false),
-                ("_A3x item", 0.0, false, false), // 1 delta entry, items i = 18..18+nA3x_
-                ("_C3x item", 0.0, false, false), // 1 delta entry, items i = 18+nA3x_..18+nA3x_+nC3x_
-                ("_C4x item", 0.0, false, false), // 1 delta entry, items i = 18+nA3x_+nC3x_..18+nA3x_+nC3x_+nC4x_
+        let summaries = Arc::new(Mutex::new(DiffSummary64::new_vec(
+            5, &[
+                ("maxit1_"  , 0.0, false, &diff::diff_abs),
+                ("a"        , 0.0, false, &diff::diff_abs),
+                ("f"        , 0.0, false, &diff::diff_abs),
+                ("maxit2_"  , 0.0, false, &diff::diff_abs),
+                ("tiny_"    , 0.0, false, &diff::diff_abs),
+                ("tol0_"    , 0.0, false, &diff::diff_abs),
+                ("tol1_"    , 0.0, false, &diff::diff_abs),
+                ("tol2_"    , 0.0, false, &diff::diff_abs),
+                ("tolb_"    , 0.0, false, &diff::diff_abs),
+                ("xthresh_" , 0.0, false, &diff::diff_abs),
+                ("_f1"      , 0.0, false, &diff::diff_abs),
+                ("_e2"      , 0.0, false, &diff::diff_abs),
+                ("_ep2"     , 0.0, false, &diff::diff_abs),
+                ("_n"       , 0.0, false, &diff::diff_abs),
+                ("_b"       , 0.0, false, &diff::diff_abs),
+                ("_c2"      , 0.0, false, &diff::diff_abs),
+                ("_etol2"   , 0.0, false, &diff::diff_abs),
+                ("_A3x item", 0.0, false, &diff::diff_abs), // 1 summary, items i = 18..18+nA3x_
+                ("_C3x item", 0.0, false, &diff::diff_abs), // 1 summary, items i = 18+nA3x_..18+nA3x_+nC3x_
+                ("_C4x item", 0.0, false, &diff::diff_abs), // 1 summary, items i = 18+nA3x_+nC3x_..18+nA3x_+nC3x_+nC4x_
             ])));
         test_basic("Geodesic_Geodesic", arg_count as isize, |line_num, items| {
             let g = Geodesic::new(items[0], items[1]);
-            let mut entries = delta_entries.lock().unwrap();
+            let mut entries = summaries.lock().unwrap();
             entries[0].add(consts[12], g.maxit1_ as f64, line_num);
             entries[1].add(items[2], g.a, line_num);
             entries[2].add(items[3], g.f, line_num);
@@ -3288,8 +3289,8 @@ mod tests {
             }
         });
         println!();
-        delta_entries.lock().unwrap().iter().for_each(|entry| println!("{}", entry));
-        delta_entries.lock().unwrap().iter().for_each(|entry| entry.assert());
+        summaries.lock().unwrap().iter().for_each(|entry| println!("{}", entry));
+        summaries.lock().unwrap().iter().for_each(|entry| entry.assert());
     }
 
     // placeholder: Geodesic_InverseLine
@@ -3298,14 +3299,14 @@ mod tests {
     #[ignore] // Fails current behavior. Relies on non-Karney outside files. Slow.
     fn test_vs_cpp_geodesic_inverse_start() {
         // Format: this-in[_a _f] sbet1 cbet1 dn1 sbet2 cbet2 dn2 lam12 slam12 clam12 result=sig12 salp1-out calp1-out salp2-out calp2-out dnm-out
-        let delta_entries = Arc::new(Mutex::new(DeltaEntry::new_vec(
-            "test_vs_cpp_geodesic_inverse_start ", &[
-                ("result (sig12 or result.0)", 0.0, false, false),
-                ("salp1-out (result.1)", 3e-16, false, false),
-                ("calp1-out (result.2)", 3e-16, false, false),
-                ("salp2-out (result.3)", 0.0, false, false),
-                ("calp2-out (result.4)", 0.0, false, false),
-                ("dnm-out (result.5)", 0.0, false, false),
+        let summaries = Arc::new(Mutex::new(DiffSummary64::new_vec(
+            5, &[
+                ("result (sig12 or result.0)", 0.0  , false, &diff::diff_abs),
+                ("salp1-out (result.1)"      , 3e-16, false, &diff::diff_abs),
+                ("calp1-out (result.2)"      , 3e-16, false, &diff::diff_abs),
+                ("salp2-out (result.3)"      , 0.0  , false, &diff::diff_abs),
+                ("calp2-out (result.4)"      , 0.0  , false, &diff::diff_abs),
+                ("dnm-out (result.5)"        , 0.0  , false, &diff::diff_abs),
             ])));
         test_basic("Geodesic_InverseStart", 17, |line_num, items| {
             let g = Geodesic::new(items[0], items[1]);
@@ -3314,7 +3315,7 @@ mod tests {
             #[allow(non_snake_case)]
             let mut C2a: [f64; nC_] = [0.0 ; nC_];
             let result = g._InverseStart(items[2], items[3], items[4], items[5], items[6], items[7], items[8], items[9], items[10], &mut C1a, &mut C2a);
-            let mut entries = delta_entries.lock().unwrap();
+            let mut entries = summaries.lock().unwrap();
             entries[0].add(items[11], result.0, line_num);
             entries[1].add(items[12], result.1, line_num);
             entries[2].add(items[13], result.2, line_num);
@@ -3326,27 +3327,27 @@ mod tests {
             }
         });
         println!();
-        delta_entries.lock().unwrap().iter().for_each(|entry| println!("{}", entry));
-        delta_entries.lock().unwrap().iter().for_each(|entry| entry.assert());
+        summaries.lock().unwrap().iter().for_each(|entry| println!("{}", entry));
+        summaries.lock().unwrap().iter().for_each(|entry| entry.assert());
     }
 
     #[test]
     #[ignore] // Relies on non-Karney outside files. Slow.
     fn test_vs_cpp_geodesic_lambda12() {
         // Format: this-in[_a _f] sbet1 cbet1 dn1 sbet2 cbet2 dn2 salp1 calp1 slam120 clam120 diffp result=lam12 salp2-out calp2-out sig12-out ssig1-out csig1-out ssig2-out csig2-out eps-out domg12-out dlam12-out
-        let delta_entries = Arc::new(Mutex::new(DeltaEntry::new_vec(
-            "test_vs_cpp_geodesic_lambda12 ", &[
-                ("result (lam12 or result.0)", 0.0, false, false),
-                ("salp2-out (result.1)", 0.0, false, false),
-                ("calp2-out (result.2)", 0.0, false, false),
-                ("sig12-out (result.3)", 0.0, false, false),
-                ("ssig1-out (result.4)", 0.0, false, false),
-                ("csig1-out (result.5)", 0.0, false, false),
-                ("ssig2-out (result.6)", 0.0, false, false),
-                ("csig2-out (result.7)", 0.0, false, false),
-                ("eps-out (result.8)", 0.0, false, false),
-                ("domg12-out (result.9)", 0.0, false, false),
-                ("dlam12-out (result.10)", 1e-3, false, false),
+        let summaries = Arc::new(Mutex::new(DiffSummary64::new_vec(
+            5, &[
+                ("result (lam12 or result.0)", 0.0 , false, &diff::diff_abs),
+                ("salp2-out (result.1)"      , 0.0 , false, &diff::diff_abs),
+                ("calp2-out (result.2)"      , 0.0 , false, &diff::diff_abs),
+                ("sig12-out (result.3)"      , 0.0 , false, &diff::diff_abs),
+                ("ssig1-out (result.4)"      , 0.0 , false, &diff::diff_abs),
+                ("csig1-out (result.5)"      , 0.0 , false, &diff::diff_abs),
+                ("ssig2-out (result.6)"      , 0.0 , false, &diff::diff_abs),
+                ("csig2-out (result.7)"      , 0.0 , false, &diff::diff_abs),
+                ("eps-out (result.8)"        , 0.0 , false, &diff::diff_abs),
+                ("domg12-out (result.9)"     , 0.0 , false, &diff::diff_abs),
+                ("dlam12-out (result.10)"    , 1e-3, false, &diff::diff_abs),
             ])));
         test_basic("Geodesic_Lambda12", 24, |line_num, items| {
             let g = Geodesic::new(items[0], items[1]);
@@ -3358,7 +3359,7 @@ mod tests {
             let mut C3a: [f64; nC_] = [0.0 ; nC_];
             let calp1 = items[9];
             let result = g._Lambda12(items[2], items[3], items[4], items[5], items[6], items[7], items[8], calp1, items[10], items[11], items[12] != 0.0, &mut C1a, &mut C2a, &mut C3a);
-            let mut entries = delta_entries.lock().unwrap();
+            let mut entries = summaries.lock().unwrap();
             entries[0].add(items[13], result.0, line_num);
             entries[1].add(items[14], result.1, line_num);
             entries[2].add(items[15], result.2, line_num);
@@ -3372,21 +3373,21 @@ mod tests {
             entries[10].add(items[23], result.10, line_num);
         });
         println!();
-        delta_entries.lock().unwrap().iter().for_each(|entry| println!("{}", entry));
-        delta_entries.lock().unwrap().iter().for_each(|entry| entry.assert());
+        summaries.lock().unwrap().iter().for_each(|entry| println!("{}", entry));
+        summaries.lock().unwrap().iter().for_each(|entry| entry.assert());
     }
 
     #[test]
     #[ignore] // Fails current behavior. Relies on non-Karney outside files. Slow.
     fn test_vs_cpp_geodesic_lengths() {
         // Format: this-in[_a _f] eps sig12 ssig1 csig1 dn1 ssig2 csig2 dn2 cbet1 cbet2 outmask s12b-out m12b-out m0-out M12-out M21-out
-        let delta_entries = Arc::new(Mutex::new(DeltaEntry::new_vec(
-            "test_vs_cpp_geodesic_lengths ", &[
-                ("s12b-out (result.0)", 0.0, false, false),
-                ("m12b-out (result.1)", 0.0, false, false),
-                ("m0-out (result.2)", 0.0, false, false),
-                ("M12-out (result.3)", 0.0, false, false),
-                ("M21-out (result.4)", 0.0, false, false),
+        let summaries = Arc::new(Mutex::new(DiffSummary64::new_vec(
+            5, &[
+                ("s12b-out (result.0)", 0.0, false, &diff::diff_abs),
+                ("m12b-out (result.1)", 0.0, false, &diff::diff_abs),
+                ("m0-out (result.2)"  , 0.0, false, &diff::diff_abs),
+                ("M12-out (result.3)" , 0.0, false, &diff::diff_abs),
+                ("M21-out (result.4)" , 0.0, false, &diff::diff_abs),
             ])));
         test_basic("Geodesic_Lengths", 18, |line_num, items| {
             let g = Geodesic::new(items[0], items[1]);
@@ -3396,7 +3397,7 @@ mod tests {
             let mut C2a: [f64; nC_] = [0.0 ; nC_];
             let outmask = items[12] as u64;
             let result = g._Lengths(items[2], items[3], items[4], items[5], items[6], items[7], items[8], items[9], items[10], items[11], outmask, &mut C1a, &mut C2a);
-            let mut entries = delta_entries.lock().unwrap();
+            let mut entries = summaries.lock().unwrap();
             if outmask & caps::DISTANCE != 0 {
                 entries[0].add(items[13], result.0, line_num);
             }
@@ -3410,8 +3411,8 @@ mod tests {
             }
         });
         println!();
-        delta_entries.lock().unwrap().iter().for_each(|entry| println!("{}", entry));
-        delta_entries.lock().unwrap().iter().for_each(|entry| entry.assert());
+        summaries.lock().unwrap().iter().for_each(|entry| println!("{}", entry));
+        summaries.lock().unwrap().iter().for_each(|entry| entry.assert());
     }
 
     // Note: For Geodesic_SinCosSeries see geomath_tests.rs
