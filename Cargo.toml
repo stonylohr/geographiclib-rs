@@ -19,9 +19,7 @@ assert_approx_eq = "1.1.0"
 criterion = "0.3.1"
 geographiclib = "0.1.0"
 utilities = { path = "utilities" }
-#float-diff = { git = "https://github.com/stonylohr/float-diff" }
-float-diff = { path = "../float-diff" }
-
+float-diff = { git = "https://github.com/stonylohr/float-diff" }
 
 [[bench]]
 name = "geodesic_benchmark"

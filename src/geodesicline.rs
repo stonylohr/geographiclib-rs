@@ -537,18 +537,22 @@ mod tests {
         // Format: this-in[_a _f _lat1 _lon1 _azi1 _a13 _s13 _caps _salp0 _calp0 tiny_ _b _c2 _f1 _k2 _salp1 _calp1 _ssig1 _csig1 _dn1 _stau1 _ctau1 _somg1 _comg1 _A1m1 _A2m1 _A3c _B11 _B21 _B31 _A4 _B41 _C1a(nC1_+1) _C1pa(nC1p_+1) _C2a(nC2_+1) _C3a(nC3_) _C4a(nC4_)] arcmode s12_a12 outmask result=a12 lat2-out lon2-out azi2-out s12-out m12-out M12-out M21-out S12-out
         let summaries = Arc::new(Mutex::new(DiffSummary64::new_vec(
             5, &[
-                ("result (a12 or result.0)", 2e-13, false, &diff::diff_abs),
-                ("lat2-out (result.1)"     , 2e-14, false, &diff::diff_abs),
-                ("lon2-out (result.2)"     , 4e-9 , false, &diff::diff_abs),
-                ("azi2-out (result.3)"     , 3e-14, false, &diff::diff_abs),
-                ("s12-out (result.4) abs"  , 0.0  , false, &diff::diff_abs),
-                ("s12-out (result.4) rel"  , 0.0  , false, &diff::diff_rel),
-                ("m12-out (result.5) abs"  , 0.0  , false, &diff::diff_abs),
-                ("m12-out (result.5) rel"  , 0.0  , false, &diff::diff_rel),
-                ("M12-out (result.6)"      , 0.0  , false, &diff::diff_abs),
-                ("M21-out (result.7)"      , 0.0  , false, &diff::diff_abs),
-                ("S12-out (result.8) abs"  , 0.0  , false, &diff::diff_abs),
-                ("S12-out (result.8) rel"  , 0.0  , false, &diff::diff_rel),
+                ("result (a12 or result.0) abs", 2e-13, false, &diff::diff_abs),
+                ("result (a12 or result.0) ulp", 1.0  , false, &diff::diff_ulps),
+                ("lat2-out (result.1) abs"     , 2e-14, false, &diff::diff_abs),
+                ("lat2-out (result.1) ulp"     , 1.0  , false, &diff::diff_ulps),
+                ("lon2-out (result.2) abs"     , 4e-9 , false, &diff::diff_abs),
+                ("lon2-out (result.2) ulp"     , 5e18 , false, &diff::diff_ulps),
+                ("azi2-out (result.3) abs"     , 3e-14, false, &diff::diff_abs),
+                ("azi2-out (result.3) ulp"     , 1.0  , false, &diff::diff_ulps),
+                ("s12-out (result.4) abs"      , 0.0  , false, &diff::diff_abs),
+                ("s12-out (result.4) rel"      , 0.0  , false, &diff::diff_rel),
+                ("m12-out (result.5) abs"      , 0.0  , false, &diff::diff_abs),
+                ("m12-out (result.5) rel"      , 0.0  , false, &diff::diff_rel),
+                ("M12-out (result.6)"          , 0.0  , false, &diff::diff_abs),
+                ("M21-out (result.7)"          , 0.0  , false, &diff::diff_abs),
+                ("S12-out (result.8) abs"      , 0.0  , false, &diff::diff_abs),
+                ("S12-out (result.8) rel"      , 0.0  , false, &diff::diff_rel),
             ])));
         test_basic("GeodesicLine_GenPosition", 44 + 3 + 5 * GEODESIC_ORDER as isize, |line_num, items| {
             let g = Geodesic::new(items[0], items[1]);
@@ -560,30 +564,40 @@ mod tests {
             let result = line._gen_position(0.0 != items[65], items[66], outmask);
             let mut entries = summaries.lock().unwrap();
             entries[0].add(items[68], result.0, line_num);
+            entries[1].add(items[68], result.0, line_num);
             if outmask & caps::LATITUDE != 0 {
-                entries[1].add(items[69], result.1, line_num);
+                entries[2].add(items[69], result.1, line_num);
+                entries[3].add(items[69], result.1, line_num);
             }
             if outmask & caps::LONGITUDE != 0 {
-                entries[2].add(items[70], result.2, line_num);
+                entries[4].add(items[70], result.2, line_num);
+                entries[5].add(items[70], result.2, line_num);
             }
             if outmask & caps::AZIMUTH != 0 {
-                entries[3].add(items[71], result.3, line_num);
+                entries[6].add(items[71], result.3, line_num);
+                entries[7].add(items[71], result.3, line_num);
             }
             if outmask & caps::DISTANCE != 0 {
-                entries[4].add(items[72], result.4, line_num);
-                entries[5].add(items[72], result.4, line_num);
+                entries[8].add(items[72], result.4, line_num);
+                if items[72] != 0.0 {
+                    entries[9].add(items[72], result.4, line_num);
+                }
             }
             if outmask & caps::REDUCEDLENGTH != 0 {
-                entries[6].add(items[73], result.5, line_num);
-                entries[7].add(items[73], result.5, line_num);
+                entries[10].add(items[73], result.5, line_num);
+                if items[73] != 0.0 {
+                    entries[11].add(items[73], result.5, line_num);
+                }
             }
             if outmask & caps::GEODESICSCALE != 0 {
-                entries[8].add(items[74], result.6, line_num);
-                entries[9].add(items[75], result.7, line_num);
+                entries[12].add(items[74], result.6, line_num);
+                entries[13].add(items[75], result.7, line_num);
             }
             if outmask & caps::AREA != 0 {
-                entries[10].add(items[76], result.8, line_num);
-                entries[11].add(items[76], result.8, line_num);
+                entries[14].add(items[76], result.8, line_num);
+                if items[76] != 0.0 {
+                    entries[15].add(items[76], result.8, line_num);
+                }
             }
         });
         println!();
@@ -607,35 +621,41 @@ mod tests {
                 ("a13"      , 0.0  , false, &diff::diff_abs),
                 ("s13"      , 0.0  , false, &diff::diff_abs),
                 ("caps"     , 0.0  , false, &diff::diff_abs),
-                ("salp0"    , 6e-17, false, &diff::diff_abs),
-                ("calp0"    , 2e-16, false, &diff::diff_abs),
+                ("salp0 abs", 6e-17, false, &diff::diff_abs),
+                ("salp0 ulp", 1.0,   false, &diff::diff_ulps),
+                ("calp0 abs", 2e-16, false, &diff::diff_abs),
+                ("calp0 ulp", 1.0,   false, &diff::diff_ulps),
                 ("tiny"     , 0.0  , false, &diff::diff_abs),
                 ("b"        , 0.0  , false, &diff::diff_abs),
                 ("c2"       , 0.0  , false, &diff::diff_abs),
                 ("f1"       , 0.0  , false, &diff::diff_abs),
-                ("k2"       , 2e-18, false, &diff::diff_abs),
+                ("k2 abs"   , 2e-18, false, &diff::diff_abs),
+                ("k2 ulp"   , 2.0  , false, &diff::diff_ulps),
                 ("salp1"    , 0.0  , false, &diff::diff_abs),
                 ("calp1"    , 0.0  , false, &diff::diff_abs),
-                ("ssig1"    , 2e-16, false, &diff::diff_abs),
-                ("csig1"    , 2e-16, false, &diff::diff_abs),
+                ("ssig1 abs", 2e-16, false, &diff::diff_abs),
+                ("ssig1 ulp", 1.0  , false, &diff::diff_ulps),
+                ("csig1 abs", 2e-16, false, &diff::diff_abs),
+                ("csig1 ulp", 1.0  , false, &diff::diff_ulps),
                 ("dn1"      , 0.0  , false, &diff::diff_abs),
-                ("stau1"    , 0.0  , false, &diff::diff_abs),
-                ("ctau1"    , 0.0  , false, &diff::diff_abs),
+                ("stau1"    , 3e-2 , false, &diff::diff_abs),
+                ("ctau1"    , 1e0  , false, &diff::diff_abs),
                 ("somg1"    , 0.0  , false, &diff::diff_abs),
-                ("comg1"    , 2e-16, false, &diff::diff_abs),
+                ("comg1 abs", 2e-16, false, &diff::diff_abs),
+                ("comg1 ulp", 1.0  , false, &diff::diff_ulps),
                 ("A1m1"     , 0.0  , false, &diff::diff_abs),
                 ("A2m1"     , 0.0  , false, &diff::diff_abs),
-                ("A3c"      , 0.0  , false, &diff::diff_abs),
-                ("B11"      , 0.0  , false, &diff::diff_abs),
-                ("B21"      , 0.0  , false, &diff::diff_abs),
-                ("B31"      , 0.0  , false, &diff::diff_abs),
-                ("A4"       , 0.0  , false, &diff::diff_abs),
-                ("B41"      , 0.0  , false, &diff::diff_abs),
-                ("C1a item" , 0.0  , false, &diff::diff_abs),
-                ("C1pa item", 0.0  , false, &diff::diff_abs),
-                ("C2a item" , 0.0  , false, &diff::diff_abs),
-                ("C3a item" , 0.0  , false, &diff::diff_abs),
-                ("C4a item" , 0.0  , false, &diff::diff_abs),
+                ("A3c"      , 3e-3 , false, &diff::diff_abs),
+                ("B11"      , 3e-5 , false, &diff::diff_abs),
+                ("B21"      , 9e-2 , false, &diff::diff_abs),
+                ("B31"      , 1e0  , false, &diff::diff_abs),
+                ("A4"       , 2e11 , false, &diff::diff_abs),
+                ("B41"      , 7e-1 , false, &diff::diff_abs),
+                ("C1a item" , 9e-4 , false, &diff::diff_abs),
+                ("C1pa item", 5e-4 , false, &diff::diff_abs),
+                ("C2a item" , 9e-4 , false, &diff::diff_abs),
+                ("C3a item" , 3e-4 , false, &diff::diff_abs),
+                ("C4a item" , 2e14 , false, &diff::diff_abs),
             ])));
         // 38 +... _C1a(nC1_+1) _C1pa(nC1p_+1) _C2a(nC2_+1) _C3a(nC3_) _C4a(nC4_)
         test_basic("GeodesicLine_GeodesicLine_5arg", 38 + 3 + 5 * (GEODESIC_ORDER as isize), |line_num, items| {
@@ -652,36 +672,43 @@ mod tests {
             entries[6].add(items[12], line.s13, line_num);
             entries[7].add(items[13], line.caps as f64, line_num);
             entries[8].add(items[14], line._salp0, line_num);
-            entries[9].add(items[15], line._calp0, line_num);
-            entries[10].add(items[16], line.tiny_, line_num);
-            entries[11].add(items[17], line._b, line_num);
-            entries[12].add(items[18], line._c2, line_num);
-            entries[13].add(items[19], line._f1, line_num);
-            entries[14].add(items[20], line._k2, line_num);
-            entries[15].add(items[21], line.salp1, line_num);
-            entries[16].add(items[22], line.calp1, line_num);
-            entries[17].add(items[23], line._ssig1, line_num);
-            entries[18].add(items[24], line._csig1, line_num);
-            entries[19].add(items[25], line._dn1, line_num);
-            entries[20].add(items[26], line._stau1, line_num);
-            entries[21].add(items[27], line._ctau1, line_num);
-            entries[22].add(items[28], line._somg1, line_num);
-            entries[23].add(items[29], line._comg1, line_num);
-            entries[24].add(items[30], line._A1m1, line_num);
-            entries[25].add(items[31], line._A2m1, line_num);
-            entries[26].add(items[32], line._A3c, line_num);
-            entries[27].add(items[33], line._B11, line_num);
-            entries[28].add(items[34], line._B21, line_num);
-            entries[29].add(items[35], line._B31, line_num);
-            entries[30].add(items[36], line._A4, line_num);
-            entries[31].add(items[37], line._B41, line_num);
+            entries[9].add(items[14], line._salp0, line_num);
+            entries[10].add(items[15], line._calp0, line_num);
+            entries[11].add(items[15], line._calp0, line_num);
+            entries[12].add(items[16], line.tiny_, line_num);
+            entries[13].add(items[17], line._b, line_num);
+            entries[14].add(items[18], line._c2, line_num);
+            entries[15].add(items[19], line._f1, line_num);
+            entries[16].add(items[20], line._k2, line_num);
+            entries[17].add(items[20], line._k2, line_num);
+            entries[18].add(items[21], line.salp1, line_num);
+            entries[19].add(items[22], line.calp1, line_num);
+            entries[20].add(items[23], line._ssig1, line_num);
+            entries[21].add(items[23], line._ssig1, line_num);
+            entries[22].add(items[24], line._csig1, line_num);
+            entries[23].add(items[24], line._csig1, line_num);
+            entries[24].add(items[25], line._dn1, line_num);
+            entries[25].add(items[26], line._stau1, line_num);
+            entries[26].add(items[27], line._ctau1, line_num);
+            entries[27].add(items[28], line._somg1, line_num);
+            entries[28].add(items[29], line._comg1, line_num);
+            entries[29].add(items[29], line._comg1, line_num);
+            entries[30].add(items[30], line._A1m1, line_num);
+            entries[31].add(items[31], line._A2m1, line_num);
+            entries[32].add(items[32], line._A3c, line_num);
+            entries[33].add(items[33], line._B11, line_num);
+            entries[34].add(items[34], line._B21, line_num);
+            entries[35].add(items[35], line._B31, line_num);
+            entries[36].add(items[36], line._A4, line_num);
+            entries[37].add(items[37], line._B41, line_num);
+            // Note: It is coincidental that the entries and items indices end at the same value here.
 
             let mut i = 38;
             assert_eq!(GEODESIC_ORDER as usize + 1, line._C1a.len(), "self._C1a size mismatch");
             // The first element isn't used, so isn't useful to compare.
             for item in &line._C1a[1..] {
                 i += 1;
-                entries[32].add(items[i], *item, line_num);
+                entries[38].add(items[i], *item, line_num);
             }
 
             assert_eq!(GEODESIC_ORDER as usize + 1, line._C1pa.len(), "self._C1pa size mismatch");
@@ -689,7 +716,7 @@ mod tests {
             i += 1;
             for item in &line._C1pa[1..] {
                 i += 1;
-                entries[33].add(items[i], *item, line_num);
+                entries[39].add(items[i], *item, line_num);
             }
 
             assert_eq!(GEODESIC_ORDER as usize + 1, line._C2a.len(), "self._C2a size mismatch");
@@ -697,7 +724,7 @@ mod tests {
             i += 1;
             for item in &line._C2a[1..] {
                 i += 1;
-                entries[34].add(items[i], *item, line_num);
+                entries[40].add(items[i], *item, line_num);
             }
 
             assert_eq!(GEODESIC_ORDER as usize, line._C3a.len(), "self._C3a size mismatch");
@@ -705,14 +732,14 @@ mod tests {
             i += 1;
             for item in &line._C3a[1..] {
                 i += 1;
-                entries[35].add(items[i], *item, line_num);
+                entries[41].add(items[i], *item, line_num);
             }
 
             assert_eq!(GEODESIC_ORDER as usize, line._C4a.len(), "self._C4a size mismatch");
             // All elements of _C4a are used
             for item in &line._C4a {
                 i += 1;
-                entries[36].add(items[i], *item, line_num);
+                entries[42].add(items[i], *item, line_num);
             }
         });
         println!();

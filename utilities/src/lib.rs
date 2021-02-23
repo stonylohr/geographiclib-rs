@@ -1,10 +1,10 @@
 // todo: add difference calculations from tests/GeodTest to rs utilities (and review vs geod_error from validate-geographiclib
-// todo: experiment with using diff::diff_ulps in some places
-// todo: check uncommitted changes to make sure I didn't accidentally update any tolerances through copy-paste error
-// todo: check uncommitted changes to make sure I didn't change any param names by copy-paste error
-// todo: check uncommitted changes to make sure I didn't change any param indices by copy-paste error
+// todo: consider dropping rel test cases, and instead just using abs and ulps
+// todo: revisit tolerances for test_vs_cpp_geodesic_gen_inverse_azi
+// todo: revisit test_vs_cpp_geodesic_gen_direct
+// todo: revisit test_vs_cpp_geodesic_inverse_start
+// todo: revisit test_vs_cpp_geodesic_lengths
 // todo: change dependency on float-diff to specify version
-// todo: change float-diff dependency back to github-based dependency
 
 // testing tip: If you want full test output in a predictable order, including ignored tests,
 //              use "cargo test -- --include-ignored --nocapture --test-threads 1"

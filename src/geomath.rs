@@ -631,8 +631,8 @@ mod tests {
         // Line format: y x result
         let summaries = Arc::new(Mutex::new(DiffSummary64::new_vec(
             5, &[
-                // todo: this is a prime candidate for an ULP/step tolerance
-                ("result", 3e-14, false, &diff::diff_abs),
+                ("result abs", 3e-14, false, &diff::diff_abs),
+                ("result ulp", 1.0, false, &diff::diff_ulps),
             ])));
         test_basic("Math_atan2d", 3, |line_num, items| {
             let result = atan2d(items[0], items[1]);
@@ -643,6 +643,7 @@ mod tests {
             // For simplicity, require matching C++ for now.
             // let special_case = items[0] == 0.0 && items[0].is_sign_negative() && items[1] == 1.0 && result.is_sign_positive();
             entries[0].add(items[2], result, line_num);
+            entries[1].add(items[2], result, line_num);
         });
         println!();
         summaries.lock().unwrap().iter().for_each(|entry| println!("{}", entry));
@@ -669,12 +670,14 @@ mod tests {
         // Line format: x es result
         let summaries = Arc::new(Mutex::new(DiffSummary64::new_vec(
             5, &[
-                ("result", 2e-18, false, &diff::diff_abs),
+                ("result abs", 2e-18, false, &diff::diff_abs),
+                ("result ulp", 2.0, false, &diff::diff_ulps),
             ])));
         test_basic("Math_eatanhe", 3, |line_num, items| {
             let result = eatanhe(items[0], items[1]);
             let mut entries = summaries.lock().unwrap();
             entries[0].add(items[2], result, line_num);
+            entries[1].add(items[2], result, line_num);
         });
         println!();
         summaries.lock().unwrap().iter().for_each(|entry| println!("{}", entry));
@@ -753,14 +756,18 @@ mod tests {
         // Line format: x sinx-out cosx-out
         let summaries = Arc::new(Mutex::new(DiffSummary64::new_vec(
             5, &[
-                ("sinx-out (result.0)", 2e-16, false, &diff::diff_abs),
-                ("cosx-out (result.1)", 2e-16, false, &diff::diff_abs),
+                ("sinx-out (result.0) abs", 2e-16, false, &diff::diff_abs),
+                ("sinx-out (result.0) ulp", 1.0  , false, &diff::diff_ulps),
+                ("cosx-out (result.1) abs", 2e-16, false, &diff::diff_abs),
+                ("cosx-out (result.1) ulp", 1.0  , false, &diff::diff_ulps),
             ])));
         test_basic("Math_sincosd", 3, |line_num, items| {
             let result = sincosd(items[0]);
             let mut entries = summaries.lock().unwrap();
             entries[0].add(items[1], result.0, line_num);
-            entries[1].add(items[2], result.1, line_num);
+            entries[1].add(items[1], result.0, line_num);
+            entries[2].add(items[2], result.1, line_num);
+            entries[3].add(items[2], result.1, line_num);
         });
         println!();
         summaries.lock().unwrap().iter().for_each(|entry| println!("{}", entry));
@@ -821,12 +828,14 @@ mod tests {
         // Note: In the geographiclib C++ library, this function is in Geodesic, but in Rust it's in geomath.
         let summaries = Arc::new(Mutex::new(DiffSummary64::new_vec(
             5, &[
-                ("result", 5e-16, false, &diff::diff_abs),
+                ("result abs", 5e-16, false, &diff::diff_abs),
+                ("result ulp", 14.0 , false, &diff::diff_ulps),
             ])));
         test_basic("Geodesic_Astroid", 3, |line_num, items| {
             let result = astroid(items[0], items[1]);
             let mut entries = summaries.lock().unwrap();
             entries[0].add(items[2], result, line_num);
+            entries[1].add(items[2], result, line_num);
         });
         println!();
         summaries.lock().unwrap().iter().for_each(|entry| println!("{}", entry));
@@ -878,7 +887,8 @@ mod tests {
         // Note: In the geographiclib C++ library, this function is in Geodesic, but in Rust it's in geomath.
         let summaries = Arc::new(Mutex::new(DiffSummary64::new_vec(
             5, &[
-                ("c item", 0.0, false, &diff::diff_abs),
+                ("c item abs", 9e-2, false, &diff::diff_abs),
+                ("c item ulp", 7e18, false, &diff::diff_ulps),
             ])));
         test_basic("Geodesic_C1f", crate::geodesic::GEODESIC_ORDER as isize + 2, |line_num, items| {
             let mut c = [0.0; crate::geodesic::GEODESIC_ORDER as usize + 1];
@@ -886,6 +896,7 @@ mod tests {
             let mut entries = summaries.lock().unwrap();
             for i in 0..c.len() {
                 entries[0].add(items[1 + i], c[i], line_num);
+                entries[1].add(items[1 + i], c[i], line_num);
             }
         });
         println!();

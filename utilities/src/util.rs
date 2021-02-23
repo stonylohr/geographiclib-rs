@@ -158,21 +158,26 @@ pub fn as_vecs_num_sparse(file: &File, header_count: usize, indices: &[usize]) -
 }
 
 // Read an unzipped copy of Karney's full GeodTest.dat file from a standard relative path.
-pub fn read_geodtest() -> File {
+pub fn read_geodtest_gen(file_name: &str) -> File {
     let dir_base = std::env::current_dir().expect("Failed to determine current directory");
     let path_base = dir_base.as_path();
     let pathbuf = path::Path::new(path_base)
         .join(DAT_PATH_RELATIVE)
-        .join("GeodTest.dat");
+        .join(file_name);
     let path = pathbuf.as_path();
     let file = match File::open(path) {
         Ok(val) => val,
         Err(_error) => {
             let path_str = path.to_str().expect("Failed to convert GeodTest path to string during error reporting");
-            panic!("Failed to open GeodTest.dat file. It may need to be downloaded and unzipped to: {}\nFor details see https://geographiclib.sourceforge.io/html/geodesic.html#testgeod", path_str)
+            panic!("Failed to open {} file. It may need to be downloaded and unzipped to: {}\nFor details see https://geographiclib.sourceforge.io/html/geodesic.html#testgeod", file_name, path_str)
         }
     };
     file
+}
+
+// Read an unzipped copy of Karney's full GeodTest.dat file from a standard relative path.
+pub fn read_geodtest() -> File {
+    read_geodtest_gen("GeodTest.dat")
 }
 
 // Centralized logic for reading a geographiclib instrumented-crude *_consts data file.
